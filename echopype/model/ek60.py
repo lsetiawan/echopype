@@ -34,26 +34,29 @@ class EchoData(object):
     def file_path(self, p):
         self._file_path = p
 
-        # Load netCDF groups if file format is correct
-        pp = os.path.basename(p)
+        # Check file type
+
+        if type(p) == list:  # if input file number >1
+            pp = os.path.basename(p[0])
+            pname = os.path.dirname(p[0])
+        else:
+            pp = os.path.basename(p)
+            pname = os.path.dirname(p)
         _, ext = os.path.splitext(pp)
 
         if ext == '.raw':
             print('Data file in manufacturer format, please convert to .nc first.')
         elif ext == '.nc':
-            self.toplevel = xr.open_dataset(self.file_path)
+            # self.toplevel = xr.open_dataset(p[0])
 
             # Get .nc filenames for storing processed data if computation is performed
-            self.Sv_path = os.path.join(os.path.dirname(self.file_path),
-                                        os.path.splitext(os.path.basename(self.file_path))[0] + '_Sv.nc')
-            self.Sv_clean_path = os.path.join(os.path.dirname(self.file_path),
-                                              os.path.splitext(os.path.basename(self.file_path))[0] + '_Sv_clean.nc')
-            self.MVBS_path = os.path.join(os.path.dirname(self.file_path),
-                                          os.path.splitext(os.path.basename(self.file_path))[0] + '_MVBS.nc')
+            self.Sv_path = os.path.join(pname, os.path.splitext(p[0])[0] + '_Sv.nc')
+            self.Sv_clean_path = os.path.join(pname, os.path.splitext(p[0])[0] + '_Sv_clean.nc')
+            self.MVBS_path = os.path.join(pname, os.path.splitext(p[0])[0] + '_MVBS.nc')
 
             # Raise error if the file format convention does not match
-            if self.toplevel.sonar_convention_name != 'SONAR-netCDF4':
-                raise ValueError('netCDF file convention not recognized.')
+            # if self.toplevel.sonar_convention_name != 'SONAR-netCDF4':
+            #     raise ValueError('netCDF file convention not recognized.')
         else:
             raise ValueError('Data file format not recognized.')
 
@@ -68,8 +71,12 @@ class EchoData(object):
         """
 
         # Open data set for Environment and Beam groups
-        ds_env = xr.open_dataset(self.file_path, group="Environment")
-        ds_beam = xr.open_dataset(self.file_path, group="Beam")
+        if type(self.file_path) == list:  # if input file number >1
+            ds_env = xr.open_dataset(self.file_path[0], group="Environment")  #TODO: check frequency of all files
+            ds_beam = xr.open_mfdataset(self.file_path, group="Beam", concat_dim='ping_time')
+        else:
+            ds_env = xr.open_dataset(self.file_path, group="Environment")
+            ds_beam = xr.open_dataset(self.file_path, group="Beam")
 
         # Derived params
         sample_thickness = ds_env.sound_speed_indicative * ds_beam.sample_interval / 2  # sample thickness
@@ -208,7 +215,7 @@ class EchoData(object):
 
         # Groupby noise removal operation
         proc_data.coords['add_idx'] = ('ping_time', add_idx)
-        Sv_clean = proc_data.Sv.groupby('add_idx').apply(remove_n)
+        Sv_clean = proc_data.Sv.swap_dims({'ping_time': 'add_idx'}).groupby('add_idx').apply(remove_n)
 
         # Set up DataArray
         Sv_clean.name = 'Sv_clean'
