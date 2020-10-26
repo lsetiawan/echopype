@@ -138,9 +138,9 @@ class ConvertBase:
                                      f"a directory when not combining files (combine_opt=False) or "
                                      f"a path to a file when combining multiple files (combine_opt=True).")
 
-            # Use directory of input file is self.out_dir is empty
+            # Use current directory if self.out_dir is empty
             if self.out_dir == '':
-                self.out_dir = os.path.dirname(self.filename[0])
+                self.out_dir = os.path.abspath(os.path.curdir)
 
             # Create folder if save_path does not exist already
             if (self.out_dir is not None) and (not os.path.exists(self.out_dir)):
@@ -150,11 +150,11 @@ class ConvertBase:
                 except FileNotFoundError:
                     raise ValueError("A valid save directory was not given.")
 
-        else:  # Save in the same directory as raw file if save_path is not specified
+        else:  # Save in the current directory if save_path is not specified
             if combine_opt:
                 raise ValueError("Specify a output file path when combining multiple raw files by"
                                  "setting save_path=PATH_TO_COMBINED_FILENAME")
-            self.out_dir = os.path.dirname(self.filename[0])
+            self.out_dir = os.path.abspath(os.path.curdir)
 
         # Store output filenames
         files = [os.path.splitext(os.path.basename(f))[0] for f in filenames]
