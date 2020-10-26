@@ -7,3 +7,6 @@ pytz
 scipy
 xarray
 zarr
+fsspec
+requests
+aiohttp
