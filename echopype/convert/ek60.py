@@ -12,6 +12,9 @@ import xarray as xr
 from datetime import datetime as dt
 import pytz
 import pynmea2
+from urllib.parse import urlparse
+
+import fsspec
 from .._version import get_versions
 from .utils.ek_raw_io import RawSimradFile, SimradEOF
 from .utils.nmea_data import NMEAData
@@ -238,19 +241,7 @@ class ConvertEK60(ConvertBase):
 
         self.range_lengths = uni  # used in looping when saving files with different range_bin numbers
 
-    def load_ek60_raw(self, raw):
-        """Method to parse the EK60 ``.raw`` data file.
-
-        This method parses the ``.raw`` file and saves the parsed data
-        to the ConvertEK60 instance.
-
-        Parameters
-        ----------
-        raw : string
-            raw filename
-        """
-        print('%s  converting file: %s' % (dt.now().strftime('%H:%M:%S'), os.path.basename(raw)))
-
+    def __load_ek60_raw(self, raw):
         with RawSimradFile(raw, 'r') as fid:
             # Read the CON0 configuration datagram. Only keep 1 if multiple files
             if self.config_datagram is None:
@@ -276,6 +267,27 @@ class ConvertEK60(ConvertBase):
 
             # Read the rest of datagrams
             self._read_datagrams(fid)
+
+    def load_ek60_raw(self, raw):
+        """Method to parse the EK60 ``.raw`` data file.
+
+        This method parses the ``.raw`` file and saves the parsed data
+        to the ConvertEK60 instance.
+
+        Parameters
+        ----------
+        raw : string
+            raw filename
+        """
+        print('%s  converting file: %s' % (dt.now().strftime('%H:%M:%S'), os.path.basename(raw)))
+
+        url_parsed_path = urlparse(raw)
+        if url_parsed_path.scheme in ['http', 'https']:
+            fs = fsspec.filesystem(url_parsed_path.scheme)
+            with fs.open(raw) as fio:
+                self.__load_ek60_raw(fio)
+        else:
+            self.__load_ek60_raw(raw)
 
         # Split data based on range_group (when there is a switch of range_bin in the middle of a file)
         self.split_by_range_group()
