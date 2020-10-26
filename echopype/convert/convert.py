@@ -3,6 +3,10 @@ This file provides a wrapper for the convert objects and functions.
 Users will not need to know the names of the specific objects they need to create.
 """
 import os
+from urllib.parse import urlparse
+
+import fsspec
+
 from .azfp import ConvertAZFP
 from .ek60 import ConvertEK60
 from .ek80 import ConvertEK80
@@ -30,15 +34,30 @@ def Convert(path='', xml_path='', model='EK60'):
             file_name = os.path.basename(path[0])
             ext = os.path.splitext(file_name)[1]
             for p in path:
-                if not os.path.isfile(p):
-                    raise FileNotFoundError(f"There is no file named {os.path.basename(p)}")
+                url_parsed_path = urlparse(p)
+                if url_parsed_path.scheme not in ['http', 'https', '']:
+                    raise NotImplementedError(
+                        f"Scheme '{url_parsed_path.scheme}' is not supported."
+                    )
+                fs = fsspec.filesystem(url_parsed_path.scheme)
+
+                if not fs.isfile(p):
+                    raise FileNotFoundError(
+                        f"There is no file named {os.path.basename(p)}"
+                    )
                 if os.path.splitext(p)[1] != ext:
                     raise ValueError("Not all files are in the same format.")
         else:
             file_name = os.path.basename(path)
             ext = os.path.splitext(file_name)[1]
-            if not os.path.isfile(path):
-                raise FileNotFoundError(f"There is no file named {os.path.basename(path)}")
+            url_parsed_path = urlparse(path)
+            if url_parsed_path.scheme not in ['http', 'https', '']:
+                raise NotImplementedError(
+                    f"Scheme '{url_parsed_path.scheme}' is not supported."
+                )
+            fs = fsspec.filesystem(url_parsed_path.scheme)
+            if not fs.isfile(path):
+                raise FileNotFoundError(f"There is no file named {file_name}")
 
         # Gets the type of echosounder from the extension of the raw file
         # return a Convert object depending on the type of echosounder used to create the raw file
