@@ -3,6 +3,8 @@ This file provides a wrapper for the process object and functions.
 Users will not need to know the names of the specific objects they need to create.
 """
 import os
+from urllib.parse import urlparse
+import fsspec
 import xarray as xr
 from echopype.process.azfp import ProcessAZFP
 from echopype.process.ek60 import ProcessEK60
@@ -29,13 +31,20 @@ def Process(nc_path):
 
     if fname.endswith('.nc'):
         open_dataset = xr.open_dataset
+        file_path = nc_path
     elif fname.endswith('.zarr'):
         open_dataset = xr.open_zarr
+        url_parsed_path = urlparse(nc_path)
+        if url_parsed_path.scheme not in ['s3', '']:
+            raise NotImplementedError(
+                f"Scheme '{url_parsed_path.scheme}' is not supported for zarr."
+            )
+        file_path = fsspec.get_mapper(nc_path)
     else:
         raise ValueError(f"{ext} is not a valid file format.")
 
     # Open nc file in order to determine what echosounder produced the original dataset
-    with open_dataset(nc_path) as nc_file:
+    with open_dataset(file_path) as nc_file:
         try:
             echo_type = nc_file.keywords
         except AttributeError:
