@@ -6,6 +6,8 @@ its connection to data files.
 import os
 import datetime as dt
 import numpy as np
+from urllib.parse import urlparse
+import fsspec
 import xarray as xr
 import zarr
 
@@ -14,6 +16,7 @@ class ProcessBase(object):
     """Class for manipulating echo data that is already converted to netCDF."""
 
     def __init__(self, file_path=""):
+        self.__object_storage = False
         self.file_path = file_path  # this passes the input through file name test
         self.noise_est_range_bin_size = 5  # meters per tile for noise estimation
         self.noise_est_ping_size = 30  # number of pings per tile for noise estimation
@@ -101,6 +104,13 @@ class ProcessBase(object):
     def file_path(self):
         return self._file_path
 
+    @property
+    def _file(self):
+        dataset = self.file_path
+        if self.__object_storage is True:
+            dataset = fsspec.get_mapper(self.file_path)
+        return dataset
+
     @file_path.setter
     def file_path(self, p):
         self._file_path = p
@@ -129,8 +139,10 @@ class ProcessBase(object):
                 raise ValueError('netCDF file convention not recognized.')
             self.toplevel.close()
         elif ext == '.zarr':
-            self.toplevel = zarr.open(self._file_path)
-
+            url_parsed_path = urlparse(self.file_path)
+            if url_parsed_path.scheme in ['s3']:
+                self.__object_storage = True
+            self.toplevel = zarr.open(self._file)
             # Get .zarr filenames for storing processed data if computation is performed
             self.Sv_path = os.path.join(os.path.dirname(self.file_path),
                                         os.path.splitext(os.path.basename(self.file_path))[0] + '_Sv.zarr')
@@ -146,7 +158,7 @@ class ProcessBase(object):
                 raise ValueError('netCDF file convention not recognized.')
         else:
             raise ValueError('Data file format not recognized.')
-    
+
     def _set_file_format(self):
         if self.file_path.endswith('.nc'):
             self._file_format = 'netcdf'
@@ -230,25 +242,22 @@ class ProcessBase(object):
             return file_name + save_postfix + file_ext
 
         file_path = file_path if file_path else self.file_path
-        if save_path is None:
-            save_dir = os.path.dirname(file_path)
-            file_out = _assemble_path()
-        else:
-            path_ext = os.path.splitext(save_path)[1]
+        save_dir = os.path.abspath(os.curdir) # explicit about path to current directory
+        file_out = _assemble_path()
+
+        if save_path:
+            _, path_ext = os.path.splitext(save_path)
             # If given save_path is file, split into directory and file
-            if path_ext != '':
+            if path_ext:
                 save_dir, file_out = os.path.split(save_path)
-                if save_dir == '':  # save_path is only a filename without directory
-                    save_dir = os.path.dirname(file_path)  # use directory from input file
+                if not save_dir:  # save_path is only a filename without directory
+                    save_dir = os.path.abspath(os.curdir)  # use current directory
             # If given save_path is a directory, get a filename from input .nc file
             else:
                 save_dir = save_path
                 file_out = _assemble_path()
 
         # Create folder if not already exists
-        if save_dir == '':
-            # TODO: should we use '.' instead of os.getcwd()?
-            save_dir = os.getcwd()  # explicit about path to current directory
         if not os.path.exists(save_dir):
             os.mkdir(save_dir)
 
