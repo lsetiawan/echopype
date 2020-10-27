@@ -3,6 +3,7 @@ echopype data model inherited from based class Process for EK60 data.
 """
 
 import datetime as dt
+import fsspec
 import numpy as np
 from ..utils import uwa
 from .processbase import ProcessBase
@@ -12,7 +13,7 @@ class ProcessEK60(ProcessBase):
     """Class for manipulating EK60 echo data already converted to netCDF.
     """
     def __init__(self, file_path=""):
-        ProcessBase.__init__(self, file_path)
+        super().__init__(file_path)
         self.tvg_correction_factor = 2  # range bin offset factor for calculating time-varying gain in EK60
 
         # Initialize environment-related parameters
@@ -22,7 +23,7 @@ class ProcessEK60(ProcessBase):
         self._seawater_absorption = self.calc_seawater_absorption()
 
         # Initialize calibration-related parameters
-        with self._open_dataset(self.file_path, group="Beam") as ds_beam:
+        with self._open_dataset(self._file, group="Beam") as ds_beam:
             self._gain_correction = ds_beam.gain_correction
             self._equivalent_beam_angle = ds_beam.equivalent_beam_angle
             self._sa_correction = ds_beam.sa_correction
@@ -55,7 +56,7 @@ class ProcessEK60(ProcessBase):
     # Environmental and derived parameters
     def calc_sound_speed(self, src='file'):
         if src == 'file':
-            with self._open_dataset(self.file_path, group="Environment") as ds_env:
+            with self._open_dataset(self._file, group="Environment") as ds_env:
                 return ds_env.sound_speed_indicative
         elif src == 'user':
             ss = uwa.calc_sound_speed(salinity=self.salinity,
@@ -79,10 +80,10 @@ class ProcessEK60(ProcessBase):
         Seawater absorption value
         """
         if src == 'file':
-            with self._open_dataset(self.file_path, group="Environment") as ds_env:
+            with self._open_dataset(self._file, group="Environment") as ds_env:
                 return ds_env.absorption_indicative
         elif src == 'user':
-            with self._open_dataset(self.file_path, group='Beam') as ds_beam:
+            with self._open_dataset(self._file, group='Beam') as ds_beam:
                 freq = ds_beam.frequency.astype(np.int64)  # should already be in unit [Hz]
             return uwa.calc_seawater_absorption(freq,
                                                 temperature=self.temperature,
@@ -93,14 +94,14 @@ class ProcessEK60(ProcessBase):
             ValueError('Not sure how to update seawater absorption!')
 
     def calc_sample_thickness(self):
-        with self._open_dataset(self.file_path, group="Beam") as ds_beam:
+        with self._open_dataset(self._file, group="Beam") as ds_beam:
             sth = self.sound_speed * ds_beam.sample_interval / 2  # sample thickness
             return sth
 
     def calc_range(self):
         """Calculates range in meters using parameters stored in the .nc file.
         """
-        with self._open_dataset(self.file_path, group="Beam") as ds_beam:
+        with self._open_dataset(self._file, group="Beam") as ds_beam:
             range_meter = self.sample_thickness * ds_beam.range_bin - \
                 self.tvg_correction_factor * self.sample_thickness  # DataArray [frequency x range_bin]
             range_meter = range_meter.where(range_meter > 0, other=0)
@@ -123,7 +124,7 @@ class ProcessEK60(ProcessBase):
         print('%s  calibrating data in %s' % (dt.datetime.now().strftime('%H:%M:%S'), self.file_path))
 
         # Open data set for Environment and Beam groups
-        ds_beam = self._open_dataset(self.file_path, group="Beam")
+        ds_beam = self._open_dataset(self._file, group="Beam")
 
         # Derived params
         wavelength = self.sound_speed / ds_beam.frequency  # wavelength
@@ -176,8 +177,8 @@ class ProcessEK60(ProcessBase):
         """
 
         # Open data set for Environment and Beam groups
-        ds_env = self._open_dataset(self.file_path, group="Environment")
-        ds_beam = self._open_dataset(self.file_path, group="Beam")
+        ds_env = self._open_dataset(self._file, group="Environment")
+        ds_beam = self._open_dataset(self._file, group="Beam")
         # Derived params
         wavelength = self.sound_speed / ds_env.frequency  # wavelength
 
