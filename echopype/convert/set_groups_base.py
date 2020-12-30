@@ -34,6 +34,8 @@ class SetGroupsBase:
         elif self.engine == 'zarr':
             self.compression_settings = ZARR_COMPRESSION_SETTINGS
 
+        self._sanitize_output_path()
+
     def save(self):
         """Actually save groups to file by calling the set methods.
         """
@@ -164,3 +166,7 @@ class SetGroupsBase:
         location_time = (np.array(self.convert_obj.nmea['timestamp'])[idx_loc] -
                          np.datetime64('1900-01-01T00:00:00')) / np.timedelta64(1, 's') if nmea_msg else [np.nan]
         return lat, lon, location_time
+
+    def _sanitize_output_path(self):
+        if self.engine == 'netcdf4':
+            self.output_path = self.output_path.root

@@ -4,6 +4,7 @@ echopype utilities for file handling
 import os
 import functools
 import xarray as xr
+from fsspec.mapping import FSMap
 from collections import MutableMapping
 
 
@@ -59,8 +60,27 @@ def save_file(ds, path, mode, engine, group=None, compression_settings=None):
 
 
 def get_file_format(file):
-    file = file.root if isinstance(file, MutableMapping) else file
+    file = file.root if isinstance(file, FSMap) else file
     if file.endswith('.nc'):
         return 'netcdf4'
     elif file.endswith('.zarr'):
         return 'zarr'
+
+
+def check_file_permissions(FILE_DIR):
+    try:
+        if isinstance(FILE_DIR, FSMap):
+            base_dir = os.path.dirname(FILE_DIR.root)
+            TEST_FILE = os.path.join(base_dir, ".permission_test")
+            with FILE_DIR.fs.open(TEST_FILE, "w") as f:
+                f.write("testing\n")
+            FILE_DIR.fs.delete(TEST_FILE)
+        else:
+            TEST_FILE = os.path.join(FILE_DIR, ".permission_test")
+            with open(TEST_FILE, "w") as f:
+                f.write("testing\n")
+            os.remove(TEST_FILE)
+        return True
+    except Exception as e:  # pragma: no cover
+        print(e)
+        return False

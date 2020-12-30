@@ -8,6 +8,8 @@ import numpy as np
 import zarr
 import netCDF4
 import fsspec
+from fsspec.mapping import FSMap
+from fsspec.implementations.local import LocalFileSystem
 from collections import MutableMapping
 from .parse_azfp import ParseAZFP
 from .parse_ek60 import ParseEK60
@@ -104,7 +106,11 @@ class Convert:
         # TODO: review the GGA choice
         self.nmea_gps_sentence = 'GGA'  # select GPS datagram in _set_platform_dict(), default to 'GGA'
         self.set_param({})      # Initialize parameters with empty strings
+
+        # fsspec configurations
         self.storage_options = storage_options
+        self._output_storage_options = self.storage_options
+
         self.set_source(file, model, xml_path)
 
     def __str__(self):
@@ -206,39 +212,52 @@ class Convert:
         """
 
         filenames = self.source_file
+        # defaults to Echopype directory
+        if not save_path:
+            current_dir = os.path.abspath(os.path.curdir)
+            has_permission = io.check_file_permissions(current_dir)
+            if has_permission:
+                save_path = os.path.join(current_dir, 'Echopype')
+                if not os.path.exists(save_path):
+                    os.mkdir(save_path)
 
-        # Default output directory taken from first input file
-        out_dir = os.path.dirname(filenames[0])
-        if save_path is not None:
-            dirname, fname = os.path.split(save_path)
-            basename, path_ext = os.path.splitext(fname)
-            if path_ext != file_format and path_ext != '':
-                raise ValueError("Saving {file_format} file but save path is to a {path_ext} file")
-            if path_ext != '.nc' and path_ext != '.zarr' and path_ext != '.xml' and path_ext != '':
-                raise ValueError("File format must be .nc, .zarr, or .xml")
-            # Check if save_path is a file or a directory
-            if path_ext == '':   # if a directory
-                out_dir = save_path
-            elif len(filenames) == 1:
-                if dirname != '':
-                    out_dir = dirname
-            else:  # if a file
+        dirname, fname = os.path.split(save_path)
+        basename, path_ext = os.path.splitext(fname)
+        if path_ext:
+            if len(filenames) > 1:
                 raise ValueError("save_path must be a directory")
 
+            if path_ext != file_format:
+                raise ValueError(f"Saving {file_format} file but save path is to a {path_ext} file")
+            elif path_ext not in ['.nc', '.zarr', '.xml']:
+                raise ValueError("File format must be .nc, .zarr, or .xml")
+
+            out_dir = dirname
+        else:
+            out_dir = save_path
+
         # Create folder if save_path does not exist already
-        if not os.path.exists(out_dir):
+        fsmap = fsspec.get_mapper(out_dir, **self._output_storage_options)
+        if file_format == '.nc' and not isinstance(fsmap.fs, LocalFileSystem):
+            raise ValueError("Only local filesystem allowed for NetCDF output.")
+
+        if fsmap.fs.isdir(fsmap.root):
             try:
-                os.mkdir(out_dir)
-            # Raise error if save_path is not a folder
+                has_permission = io.check_file_permissions(fsmap)
+                if has_permission:
+                    fsmap.fs.mkdir(fsmap.root)
             except FileNotFoundError:
                 raise ValueError("A valid save directory was not given.")
 
         # Store output filenames
-        if save_path is not None and not os.path.isdir(save_path):
+        if save_path and save_path != out_dir:
             files = [os.path.basename(basename)]
         else:
-            files = [os.path.splitext(os.path.basename(f))[0] for f in filenames]
-        self.output_path = [os.path.join(out_dir, f + file_format) for f in files]
+            files = [os.path.splitext(os.path.basename(f))[0] for f in filenames]    
+        self.output_path = [os.path.join(fsmap.root, f + file_format) for f in files]
+
+        if file_format == '.zarr':
+            self.output_path = [fsmap.fs.get_mapper(zarr_file, **self._output_storage_options) for zarr_file in self.output_path]
 
     def _construct_cw_file_path(self, c, output_path):
         if c.ch_ids['power'] and c.ch_ids['complex']:
@@ -262,40 +281,37 @@ class Convert:
         else:
             params = self.data_type
 
-        # Handle saving to cloud or local filesystem
-        # TODO: @ngkvain: You mean this took long before, what is the latest status?
-        if isinstance(output_path, MutableMapping):
-            if not self.overwrite:
-                if output_path.fs.exists(output_path.root):
-                    print(f"          ... this file has already been converted to {engine}, " +
-                          "conversion not executed.")
-                    return
-            # output_path.fs.rm(output_path.root, recursive=True)
+        if output_path is not None:
+            if isinstance(output_path, FSMap):
+                fsmap = output_path
+            else:
+                fsmap = fsspec.get_mapper(output_path, **self._output_storage_options)
         else:
-            # Check if file exists
-            if os.path.exists(output_path) and self.overwrite:
-                # Remove the file if self.overwrite is true
-                print("          overwriting: " + output_path)
-                self._remove_files(output_path)
-            if os.path.exists(output_path):
-                # Otherwise, skip saving
-                print(f"          ... this file has already been converted to {engine}, conversion not executed.")
-                return
+            raise ValueError("output_path is not found.")
+
+        if fsmap.fs.isdir(fsmap.root) or fsmap.fs.isfile(fsmap.root):
+            if self.overwrite:
+                print("          overwriting: " + fsmap.root)
+                # fsmap.fs.delete(fsmap.root, recursive=True)
+            else:
+                print(f"          ... {os.path.basename(file)} has already been converted to {engine}, " +
+                        "conversion not executed.")
+            return
 
         # Actually parsing and saving file(s)
         c = c(file, params=params, storage_options=self.storage_options)
         c.parse_raw()
         if self.sonar_model in ['EK80', 'EA640']:
             self._construct_cw_file_path(c, output_path)
-        sg = sg(c, input_file=file, output_path=output_path, engine=engine, compress=self.compress,
+        sg = sg(c, input_file=file, output_path=fsmap, engine=engine, compress=self.compress,
                 overwrite=self.overwrite, params=self._conversion_params, sonar_model=self.sonar_model)
         sg.save()
 
     @staticmethod
     def _remove_files(path):
         """Used to delete .nc or .zarr files"""
-        if isinstance(path, MutableMapping):
-            path.fs.rm(path.root, recursive=True)
+        if isinstance(path, FSMap):
+            path.fs.delete(path.root, recursive=True)
         else:
             fname, ext = os.path.splitext(path)
             if ext == '.zarr':
@@ -392,43 +408,20 @@ class Convert:
             var = str(e).split("'")[1]
             raise ValueError(f"Files cannot be combined due to {var} changing across the files")
 
+        if isinstance(output_path, FSMap):
+            output_path = output_path.fs.protocol[0] + '://' + output_path.root
         print("All input files combined into " + output_path)
 
     @staticmethod
     def _get_combined_save_path(save_path, source_paths):
         def get_combined_fname(path):
             fname, ext = os.path.splitext(path)
-            return fname + '[combined]' + ext
-        # Handle saving to cloud storage
-        # Flags on whether the source or output is a path to an object store
-        cloud_src = isinstance(source_paths[0], MutableMapping)
-        cloud_save_path = isinstance(save_path, MutableMapping)
-        if cloud_src or cloud_save_path:
-            fs = source_paths[0].fs if cloud_src else save_path.fs
-            if save_path is None:
-                save_path = fs.get_mapper(get_combined_fname(source_paths[0].root))
-            elif cloud_save_path:
-                fname, ext = os.path.splitext(save_path.root)
-                if ext == '':
-                    save_path = save_path.root + '/' + get_combined_fname(os.path.basename(source_paths[0].root))
-                    save_path = fs.get_mapper(save_path)
-                elif ext != '.zarr':
-                    raise ValueError("save_path must be a zarr file")
-            else:
-                raise ValueError("save_path must be a MutableMapping to a cloud store")
-        # Handle saving to local paths
-        else:
-            if save_path is None:
-                save_path = get_combined_fname(source_paths[0])
-            elif isinstance(save_path, str):
-                fname, ext = os.path.splitext(save_path)
-                # If save_path is a directory. (It must exist due to validate_path)
-                if ext == '':
-                    save_path = os.path.join(save_path, get_combined_fname(os.path.basename(source_paths[0])))
-                elif ext != '.nc' and ext != '.zarr':
-                    raise ValueError("save_path must be '.nc' or '.zarr'")
-            else:
-                raise ValueError("Invalid save_path")
+            return fname + '__combined' + ext
+
+        sample_file = source_paths[0]
+        save_path = get_combined_fname(sample_file.root) if isinstance(sample_file, FSMap) else get_combined_fname(sample_file)
+        if isinstance(sample_file, FSMap) and not isinstance(sample_file.fs, LocalFileSystem):
+            return sample_file.fs.get_mapper(save_path)
         return save_path
 
     def combine_files(self, src_files=None, save_path=None, remove_orig=False):
@@ -461,8 +454,14 @@ class Convert:
         self.output_path = [combined_save_path]
         if self.output_cw_files:
             # Append '_cw' to EK80 filepath if combining CW files
-            fname, ext = os.path.splitext(combined_save_path)
-            combined_save_path_cw = fname + '_cw' + ext
+            if isinstance(combined_save_path, FSMap):
+                cs_path = combined_save_path.root
+                fname, ext = os.path.splitext(cs_path)
+                combined_save_path_cw = combined_save_path.get_mapper(fname + '_cw' + ext)
+            else:
+                fname, ext = os.path.splitext(combined_save_path)
+                combined_save_path_cw = fname + '_cw' + ext
+
             self._perform_combination(self.output_cw_files, combined_save_path_cw, filetype)
             self.output_path.append(combined_save_path_cw)
 
@@ -593,7 +592,7 @@ class Convert:
                 ds_platform.to_zarr(f, mode="a", group="Platform")
 
     def to_netcdf(self, save_path=None, data_type='ALL', compress=True, combine=False,
-                  overwrite=False, parallel=False, extra_platform_data=None):
+                  overwrite=False, parallel=False, extra_platform_data=None, storage_options={}):
         """Convert a file or a list of files to NetCDF format.
 
         Parameters
@@ -616,11 +615,16 @@ class Convert:
             whether or not to use parallel processing. (Not yet implemented)
         extra_platform_data : Dataset
             The dataset containing the platform information to be added to the output
+        storage_options : dict
+            Additional keywords to pass to the filesystem class.
         """
         self.data_type = data_type
         self.compress = compress
         self.combine = combine
         self.overwrite = overwrite
+
+        if not self.storage_options:
+            self._output_storage_options = storage_options
 
         self._validate_path('.nc', save_path)
         # Sequential or parallel conversion
@@ -644,7 +648,7 @@ class Convert:
         self.output_path = self._path_list_to_str(self.output_path)
 
     def to_zarr(self, save_path=None, data_type='ALL', compress=True, combine=False,
-                overwrite=False, parallel=False, extra_platform_data=None):
+                overwrite=False, parallel=False, extra_platform_data=None, storage_options={}):
         """Convert a file or a list of files to zarr format.
 
         Parameters
@@ -667,11 +671,16 @@ class Convert:
             whether or not to use parallel processing. (Not yet implemented)
         extra_platform_data : Dataset
             The dataset containing the platform information to be added to the output
+        storage_options : dict
+            Additional keywords to pass to the filesystem class.
         """
         self.data_type = data_type
         self.compress = compress
         self.combine = combine
         self.overwrite = overwrite
+        
+        if not self.storage_options:
+            self._output_storage_options = storage_options
 
         if isinstance(save_path, MutableMapping):
             self._validate_object_store(save_path)
