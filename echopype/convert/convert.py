@@ -109,7 +109,7 @@ class Convert:
 
         # fsspec configurations
         self.storage_options = storage_options
-        self._output_storage_options = self.storage_options
+        self._output_storage_options = {}
 
         self.set_source(file, model, xml_path)
 
@@ -240,8 +240,7 @@ class Convert:
         fsmap = fsspec.get_mapper(out_dir, **self._output_storage_options)
         if file_format == '.nc' and not isinstance(fsmap.fs, LocalFileSystem):
             raise ValueError("Only local filesystem allowed for NetCDF output.")
-
-        if fsmap.fs.isdir(fsmap.root):
+        else:
             try:
                 has_permission = io.check_file_permissions(fsmap)
                 if has_permission:
@@ -622,9 +621,7 @@ class Convert:
         self.compress = compress
         self.combine = combine
         self.overwrite = overwrite
-
-        if not self.storage_options:
-            self._output_storage_options = storage_options
+        self._output_storage_options = storage_options
 
         self._validate_path('.nc', save_path)
         # Sequential or parallel conversion
@@ -678,9 +675,7 @@ class Convert:
         self.compress = compress
         self.combine = combine
         self.overwrite = overwrite
-        
-        if not self.storage_options:
-            self._output_storage_options = storage_options
+        self._output_storage_options = storage_options
 
         if isinstance(save_path, MutableMapping):
             self._validate_object_store(save_path)
