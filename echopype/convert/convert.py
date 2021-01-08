@@ -256,7 +256,7 @@ class Convert:
         self.output_path = [os.path.join(fsmap.root, f + file_format) for f in files]
 
         if file_format == '.zarr':
-            self.output_path = [fsmap.fs.get_mapper(zarr_file, **self._output_storage_options) for zarr_file in self.output_path]
+            self.output_path = [fsmap.fs.get_mapper(zarr_file) for zarr_file in self.output_path]
 
     def _construct_cw_file_path(self, c, output_path):
         if c.ch_ids['power'] and c.ch_ids['complex']:
