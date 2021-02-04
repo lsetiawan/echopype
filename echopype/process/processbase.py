@@ -3,8 +3,9 @@ echopype data model that keeps tracks of echo data and
 its connection to data files.
 """
 
-import os
 import datetime as dt
+import os
+
 import numpy as np
 import xarray as xr
 import zarr
@@ -19,12 +20,12 @@ class ProcessBase(object):
         self.noise_est_ping_size = 30  # number of pings per tile for noise estimation
         self.MVBS_range_bin_size = 5  # meters per tile for MVBS
         self.MVBS_ping_size = 30  # number of pings per tile for MVBS
-        self.Sv = None            # calibrated volume backscattering strength
-        self.Sv_path = None       # path to save calibrated results
-        self.Sv_clean = None      # denoised volume backscattering strength
-        self.TS = None            # calibrated target strength
-        self.TS_path = None       # path to save TS calculation results
-        self.MVBS = None          # mean volume backscattering strength
+        self.Sv = None  # calibrated volume backscattering strength
+        self.Sv_path = None  # path to save calibrated results
+        self.Sv_clean = None  # denoised volume backscattering strength
+        self.TS = None  # calibrated target strength
+        self.TS_path = None  # path to save TS calculation results
+        self.MVBS = None  # mean volume backscattering strength
         self._file_format = None
         self._open_dataset = None
         self._salinity = None
@@ -109,57 +110,73 @@ class ProcessBase(object):
         pp = os.path.basename(p)
         _, ext = os.path.splitext(pp)
 
-        supported_ext_list = ['.raw', '.01A']
+        supported_ext_list = [".raw", ".01A"]
         if ext in supported_ext_list:
-            print('Data file in manufacturer format, please convert to .nc first.')
-        elif ext == '.nc':
+            print("Data file in manufacturer format, please convert to .nc first.")
+        elif ext == ".nc":
             self.toplevel = xr.open_dataset(self.file_path)
 
             # Get .nc filenames for storing processed data if computation is performed
-            self.Sv_path = os.path.join(os.path.dirname(self.file_path),
-                                        os.path.splitext(os.path.basename(self.file_path))[0] + '_Sv.nc')
-            self.Sv_clean_path = os.path.join(os.path.dirname(self.file_path),
-                                              os.path.splitext(os.path.basename(self.file_path))[0] + '_Sv_clean.nc')
-            self.TS_path = os.path.join(os.path.dirname(self.file_path),
-                                        os.path.splitext(os.path.basename(self.file_path))[0] + '_TS.nc')
-            self.MVBS_path = os.path.join(os.path.dirname(self.file_path),
-                                          os.path.splitext(os.path.basename(self.file_path))[0] + '_MVBS.nc')
+            self.Sv_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_Sv.nc",
+            )
+            self.Sv_clean_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_Sv_clean.nc",
+            )
+            self.TS_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_TS.nc",
+            )
+            self.MVBS_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_MVBS.nc",
+            )
             # Raise error if the file format convention does not match
-            if self.toplevel.sonar_convention_name != 'SONAR-netCDF4':
-                raise ValueError('netCDF file convention not recognized.')
+            if self.toplevel.sonar_convention_name != "SONAR-netCDF4":
+                raise ValueError("netCDF file convention not recognized.")
             self.toplevel.close()
-        elif ext == '.zarr':
+        elif ext == ".zarr":
             self.toplevel = zarr.open(self._file_path)
 
             # Get .zarr filenames for storing processed data if computation is performed
-            self.Sv_path = os.path.join(os.path.dirname(self.file_path),
-                                        os.path.splitext(os.path.basename(self.file_path))[0] + '_Sv.zarr')
-            self.Sv_clean_path = os.path.join(os.path.dirname(self.file_path),
-                                              os.path.splitext(os.path.basename(self.file_path))[0] + '_Sv_clean.zarr')
-            self.TS_path = os.path.join(os.path.dirname(self.file_path),
-                                        os.path.splitext(os.path.basename(self.file_path))[0] + '_TS.zarr')
-            self.MVBS_path = os.path.join(os.path.dirname(self.file_path),
-                                          os.path.splitext(os.path.basename(self.file_path))[0] + '_MVBS.zarr')
+            self.Sv_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_Sv.zarr",
+            )
+            self.Sv_clean_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_Sv_clean.zarr",
+            )
+            self.TS_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_TS.zarr",
+            )
+            self.MVBS_path = os.path.join(
+                os.path.dirname(self.file_path),
+                os.path.splitext(os.path.basename(self.file_path))[0] + "_MVBS.zarr",
+            )
 
             # Raise error if the file format convention does not match
-            if self.toplevel.attrs['sonar_convention_name'] != 'SONAR-netCDF4':
-                raise ValueError('netCDF file convention not recognized.')
+            if self.toplevel.attrs["sonar_convention_name"] != "SONAR-netCDF4":
+                raise ValueError("netCDF file convention not recognized.")
         else:
-            raise ValueError('Data file format not recognized.')
+            raise ValueError("Data file format not recognized.")
 
     def _set_file_format(self):
-        if self.file_path.endswith('.nc'):
-            self._file_format = 'netcdf'
-        elif self.file_path.endswith('.zarr'):
-            self._file_format = 'zarr'
+        if self.file_path.endswith(".nc"):
+            self._file_format = "netcdf"
+        elif self.file_path.endswith(".zarr"):
+            self._file_format = "zarr"
 
-    def calc_sound_speed(self, src='file'):
+    def calc_sound_speed(self, src="file"):
         """Base method to be overridden for calculating sound_speed for different sonar models
         """
         # issue warning when subclass methods not available
         print("Sound speed calculation has not been implemented for this sonar model!")
 
-    def calc_seawater_absorption(self, src='file'):
+    def calc_seawater_absorption(self, src="file"):
         """Base method to be overridden for calculating seawater_absorption for different sonar models
         """
         # issue warning when subclass methods not available
@@ -169,13 +186,13 @@ class ProcessBase(object):
         """Base method to be overridden for calculating sample_thickness for different sonar models.
         """
         # issue warning when subclass methods not available
-        print('Sample thickness calculation has not been implemented for this sonar model!')
+        print("Sample thickness calculation has not been implemented for this sonar model!")
 
     def calc_range(self):
         """Base method to be overridden for calculating range for different sonar models.
         """
         # issue warning when subclass methods not available
-        print('Range calculation has not been implemented for this sonar model!')
+        print("Range calculation has not been implemented for this sonar model!")
 
     def recalculate_environment(self, ss=True, sa=True, st=True, r=True):
         """ Recalculates sound speed, seawater absorption, sample thickness, and range using
@@ -195,9 +212,9 @@ class ProcessBase(object):
         s, t, p = self.salinity, self.temperature, self.pressure
         if s is not None and t is not None and p is not None:
             if ss:
-                self.sound_speed = self.calc_sound_speed(src='user')
+                self.sound_speed = self.calc_sound_speed(src="user")
             if sa:
-                self.seawater_absorption = self.calc_seawater_absorption(src='user')
+                self.seawater_absorption = self.calc_seawater_absorption(src="user")
             if st:
                 self.sample_thickness = self.calc_sample_thickness()
             if r:
@@ -213,17 +230,18 @@ class ProcessBase(object):
         """Base method to be overridden for volume backscatter calibration and echo-integration for different sonar models.
         """
         # issue warning when subclass methods not available
-        print('Calibration has not been implemented for this sonar model!')
+        print("Calibration has not been implemented for this sonar model!")
 
     def calibrate_TS(self):
         """Base method to be overridden for target strength calibration and echo-integration for different sonar models.
         """
         # issue warning when subclass methods not available
-        print('Target strength calibration has not been implemented for this sonar model!')
+        print("Target strength calibration has not been implemented for this sonar model!")
 
-    def validate_path(self, save_path=None, save_postfix='_Sv', file_path=''):
+    def validate_path(self, save_path=None, save_postfix="_Sv", file_path=""):
         """Creates a directory if it doesnt exist. Returns a valid save path.
         """
+
         def _assemble_path():
             file_in = os.path.basename(file_path)
             file_name, file_ext = os.path.splitext(file_in)
@@ -236,9 +254,9 @@ class ProcessBase(object):
         else:
             path_ext = os.path.splitext(save_path)[1]
             # If given save_path is file, split into directory and file
-            if path_ext != '':
+            if path_ext != "":
                 save_dir, file_out = os.path.split(save_path)
-                if save_dir == '':  # save_path is only a filename without directory
+                if save_dir == "":  # save_path is only a filename without directory
                     save_dir = os.path.dirname(file_path)  # use directory from input file
             # If given save_path is a directory, get a filename from input .nc file
             else:
@@ -246,7 +264,7 @@ class ProcessBase(object):
                 file_out = _assemble_path()
 
         # Create folder if not already exists
-        if save_dir == '':
+        if save_dir == "":
             # TODO: should we use '.' instead of os.getcwd()?
             save_dir = os.getcwd()  # explicit about path to current directory
         if not os.path.exists(save_dir):
@@ -284,9 +302,14 @@ class ProcessBase(object):
         """
 
         # Adjust noise_est_range_bin_size because range_bin_size may be an inconvenient value
-        sample_thickness = sample_thickness.isel(ping_time=0).drop('ping_time') \
-            if hasattr(sample_thickness, 'ping_time') else sample_thickness
-        num_r_per_tile = np.round(r_tile_sz / sample_thickness).astype(int)  # num of range_bin per tile
+        sample_thickness = (
+            sample_thickness.isel(ping_time=0).drop("ping_time")
+            if hasattr(sample_thickness, "ping_time")
+            else sample_thickness
+        )
+        num_r_per_tile = np.round(r_tile_sz / sample_thickness).astype(
+            int
+        )  # num of range_bin per tile
         r_tile_sz = num_r_per_tile * sample_thickness
 
         # Total number of range_bin and ping tiles
@@ -298,36 +321,53 @@ class ProcessBase(object):
 
         # Tile bin edges along range
         # ... -1 to make sure each bin has the same size because of the right-inclusive and left-exclusive bins
-        r_tile_bin_edge = [np.arange(x.values + 1) * y.values - 1 for x, y in zip(num_tile_range_bin, num_r_per_tile)]
+        r_tile_bin_edge = [
+            np.arange(x.values + 1) * y.values - 1
+            for x, y in zip(num_tile_range_bin, num_r_per_tile)
+        ]
         p_tile_bin_edge = np.arange(num_tile_ping + 1) * p_tile_sz - 1
 
         return r_tile_sz, r_tile_bin_edge, p_tile_bin_edge
 
-    def _get_proc_Sv(self, source_path=None, source_postfix='_Sv'):
+    def _get_proc_Sv(self, source_path=None, source_postfix="_Sv"):
         """Private method to return calibrated Sv either from memory or _Sv.nc file.
 
         This method is called by remove_noise(), noise_estimates() and get_MVBS().
         """
         if self.Sv is None:  # calibration not yet performed
-            Sv_path = self.validate_path(save_path=source_path,  # wrangle _Sv path
-                                              save_postfix=source_postfix)
+            Sv_path = self.validate_path(
+                save_path=source_path, save_postfix=source_postfix  # wrangle _Sv path
+            )
             if os.path.exists(Sv_path):  # _Sv exists
                 self.Sv = self._open_dataset(Sv_path)  # load _Sv file
             else:
                 # if path specification given but file do not exist:
-                if (source_path is not None) or (source_postfix != '_Sv'):
-                    print('%s  no calibrated data found in specified path: %s' %
-                          (dt.datetime.now().strftime('%H:%M:%S'), Sv_path))
+                if (source_path is not None) or (source_postfix != "_Sv"):
+                    print(
+                        "%s  no calibrated data found in specified path: %s"
+                        % (dt.datetime.now().strftime("%H:%M:%S"), Sv_path)
+                    )
                 else:
-                    print('%s  data has not been calibrated. ' % dt.datetime.now().strftime('%H:%M:%S'))
-                print('          performing calibration now and operate from Sv in memory.')
+                    print(
+                        "%s  data has not been calibrated. "
+                        % dt.datetime.now().strftime("%H:%M:%S")
+                    )
+                print("          performing calibration now and operate from Sv in memory.")
                 self.calibrate()  # calibrate, have Sv in memory
         return self.Sv
 
-    def remove_noise(self, source_postfix='_Sv', source_path=None,
-                     noise_est_range_bin_size=None, noise_est_ping_size=None,
-                     SNR=0, Sv_threshold=None,
-                     save=False, save_postfix='_Sv_clean', save_path=None):
+    def remove_noise(
+        self,
+        source_postfix="_Sv",
+        source_path=None,
+        noise_est_range_bin_size=None,
+        noise_est_ping_size=None,
+        SNR=0,
+        Sv_threshold=None,
+        save=False,
+        save_postfix="_Sv_clean",
+        save_path=None,
+    ):
         """Remove noise by using noise estimates obtained from the minimum mean calibrated power level
         along each column of tiles.
 
@@ -363,14 +403,19 @@ class ProcessBase(object):
         """
 
         # Check params
-        if (noise_est_range_bin_size is not None) and (self.noise_est_range_bin_size != noise_est_range_bin_size):
+        if (noise_est_range_bin_size is not None) and (
+            self.noise_est_range_bin_size != noise_est_range_bin_size
+        ):
             self.noise_est_range_bin_size = noise_est_range_bin_size
         if (noise_est_ping_size is not None) and (self.noise_est_ping_size != noise_est_ping_size):
             self.noise_est_ping_size = noise_est_ping_size
 
         # Get calibrated Sv
         if self.Sv is not None:
-            print('%s  Remove noise from Sv stored in memory.' % dt.datetime.now().strftime('%H:%M:%S'))
+            print(
+                "%s  Remove noise from Sv stored in memory."
+                % dt.datetime.now().strftime("%H:%M:%S")
+            )
             print_src = False
         else:
             print_src = True
@@ -378,16 +423,23 @@ class ProcessBase(object):
         proc_data = self._get_proc_Sv(source_path=source_path, source_postfix=source_postfix)
 
         if print_src:
-            print('%s  Remove noise from Sv stored in: %s' %
-                  (dt.datetime.now().strftime('%H:%M:%S'), self.Sv_path))
+            print(
+                "%s  Remove noise from Sv stored in: %s"
+                % (dt.datetime.now().strftime("%H:%M:%S"), self.Sv_path)
+            )
 
         # Get tile indexing parameters
-        self.noise_est_range_bin_size, range_bin_tile_bin_edge, ping_tile_bin_edge = \
-            self.get_tile_params(r_data_sz=proc_data.range_bin.size,
-                                 p_data_sz=proc_data.ping_time.size,
-                                 r_tile_sz=self.noise_est_range_bin_size,
-                                 p_tile_sz=self.noise_est_ping_size,
-                                 sample_thickness=self.sample_thickness)
+        (
+            self.noise_est_range_bin_size,
+            range_bin_tile_bin_edge,
+            ping_tile_bin_edge,
+        ) = self.get_tile_params(
+            r_data_sz=proc_data.range_bin.size,
+            p_data_sz=proc_data.ping_time.size,
+            r_tile_sz=self.noise_est_range_bin_size,
+            p_tile_sz=self.noise_est_ping_size,
+            sample_thickness=self.sample_thickness,
+        )
 
         # Get TVG and ABS for compensating for transmission loss
         range_meter = self.range
@@ -397,8 +449,17 @@ class ProcessBase(object):
         # Function for use with apply
         def remove_n(x, rr):
             p_c_lin = 10 ** ((x.Sv - x.ABS - x.TVG) / 10)
-            nn = 10 * np.log10(p_c_lin.mean(dim='ping_time').groupby_bins('range_bin', rr).mean().min(
-                dim='range_bin_bins')) + x.ABS + x.TVG
+            nn = (
+                10
+                * np.log10(
+                    p_c_lin.mean(dim="ping_time")
+                    .groupby_bins("range_bin", rr)
+                    .mean()
+                    .min(dim="range_bin_bins")
+                )
+                + x.ABS
+                + x.TVG
+            )
             # Return values where signal is [SNR] dB above noise and at least [Sv_threshold] dB
             if not Sv_threshold:
                 return x.Sv.where(x.Sv > (nn + SNR), other=np.nan)
@@ -406,56 +467,70 @@ class ProcessBase(object):
                 return x.Sv.where((x.Sv > (nn + SNR)) & (x > Sv_threshold), other=np.nan)
 
         # Groupby noise removal operation
-        proc_data.coords['ping_idx'] = ('ping_time', np.arange(proc_data.Sv['ping_time'].size))
-        ABS.name = 'ABS'
-        TVG.name = 'TVG'
+        proc_data.coords["ping_idx"] = ("ping_time", np.arange(proc_data.Sv["ping_time"].size))
+        ABS.name = "ABS"
+        TVG.name = "TVG"
         pp = xr.merge([proc_data, ABS])
         pp = xr.merge([pp, TVG])
         # check if number of range_bin per tile the same for all freq channels
         if np.unique([np.array(x).size for x in range_bin_tile_bin_edge]).size == 1:
-            Sv_clean = pp.groupby_bins('ping_idx', ping_tile_bin_edge).\
-                            map(remove_n, rr=range_bin_tile_bin_edge[0])
-            Sv_clean = Sv_clean.drop_vars(['ping_idx'])
+            Sv_clean = pp.groupby_bins("ping_idx", ping_tile_bin_edge).map(
+                remove_n, rr=range_bin_tile_bin_edge[0]
+            )
+            Sv_clean = Sv_clean.drop_vars(["ping_idx"])
         else:
             tmp_clean = []
             cnt = 0
-            for key, val in pp.groupby('frequency'):  # iterate over different frequency channel
-                tmp = val.groupby_bins('ping_idx', ping_tile_bin_edge). \
-                    map(remove_n, rr=range_bin_tile_bin_edge[cnt])
+            for key, val in pp.groupby("frequency"):  # iterate over different frequency channel
+                tmp = val.groupby_bins("ping_idx", ping_tile_bin_edge).map(
+                    remove_n, rr=range_bin_tile_bin_edge[cnt]
+                )
                 cnt += 1
                 tmp_clean.append(tmp)
-            clean_val = np.array([zz.values for zz in xr.align(*tmp_clean, join='outer')])
-            Sv_clean = xr.DataArray(clean_val,
-                                    coords={'frequency': proc_data['frequency'].values,
-                                            'ping_time': tmp_clean[0]['ping_time'].values,
-                                            'range_bin': tmp_clean[0]['range_bin'].values},
-                                    dims=['frequency', 'ping_time', 'range_bin'])
+            clean_val = np.array([zz.values for zz in xr.align(*tmp_clean, join="outer")])
+            Sv_clean = xr.DataArray(
+                clean_val,
+                coords={
+                    "frequency": proc_data["frequency"].values,
+                    "ping_time": tmp_clean[0]["ping_time"].values,
+                    "range_bin": tmp_clean[0]["range_bin"].values,
+                },
+                dims=["frequency", "ping_time", "range_bin"],
+            )
 
         # Set up DataSet
-        Sv_clean.name = 'Sv'
+        Sv_clean.name = "Sv"
         Sv_clean = Sv_clean.to_dataset()
-        Sv_clean['noise_est_range_bin_size'] = ('frequency', self.noise_est_range_bin_size)
-        Sv_clean.attrs['noise_est_ping_size'] = self.noise_est_ping_size
+        Sv_clean["noise_est_range_bin_size"] = ("frequency", self.noise_est_range_bin_size)
+        Sv_clean.attrs["noise_est_ping_size"] = self.noise_est_ping_size
 
         # Attach calculated range into data set
         if self.range.ndim == 3:
-            Sv_clean['range'] = (('frequency', 'ping_time', 'range_bin'), self.range)
+            Sv_clean["range"] = (("frequency", "ping_time", "range_bin"), self.range)
         else:
-            Sv_clean['range'] = (('frequency', 'range_bin'), self.range)
+            Sv_clean["range"] = (("frequency", "range_bin"), self.range)
 
         # Save as object attributes as a netCDF file
         self.Sv_clean = Sv_clean
 
         if save:
             self.Sv_clean_path = self.validate_path(save_path=save_path, save_postfix=save_postfix)
-            print('%s  saving denoised Sv to %s' % (dt.datetime.now().strftime('%H:%M:%S'), self.Sv_clean_path))
+            print(
+                "%s  saving denoised Sv to %s"
+                % (dt.datetime.now().strftime("%H:%M:%S"), self.Sv_clean_path)
+            )
             self._save_dataset(Sv_clean, self.Sv_clean_path)
 
         # Close opened resources
         proc_data.close()
 
-    def noise_estimates(self, source_postfix='_Sv', source_path=None,
-                        noise_est_range_bin_size=None, noise_est_ping_size=None):
+    def noise_estimates(
+        self,
+        source_postfix="_Sv",
+        source_path=None,
+        noise_est_range_bin_size=None,
+        noise_est_ping_size=None,
+    ):
         """Obtain noise estimates from the minimum mean calibrated power level along each column of tiles.
 
         The tiles here are defined by class attributes noise_est_range_bin_size and noise_est_ping_size.
@@ -487,7 +562,9 @@ class ProcessBase(object):
         """
 
         # Check params
-        if (noise_est_range_bin_size is not None) and (self.noise_est_range_bin_size != noise_est_range_bin_size):
+        if (noise_est_range_bin_size is not None) and (
+            self.noise_est_range_bin_size != noise_est_range_bin_size
+        ):
             self.noise_est_range_bin_size = noise_est_range_bin_size
         if (noise_est_ping_size is not None) and (self.noise_est_ping_size != noise_est_ping_size):
             self.noise_est_ping_size = noise_est_ping_size
@@ -496,12 +573,17 @@ class ProcessBase(object):
         proc_data = self._get_proc_Sv()
 
         # Get tile indexing parameters
-        self.noise_est_range_bin_size, range_bin_tile_bin_edge, ping_tile_bin_edge = \
-            self.get_tile_params(r_data_sz=proc_data.range_bin.size,
-                                 p_data_sz=proc_data.ping_time.size,
-                                 r_tile_sz=self.noise_est_range_bin_size,
-                                 p_tile_sz=self.noise_est_ping_size,
-                                 sample_thickness=self.sample_thickness)
+        (
+            self.noise_est_range_bin_size,
+            range_bin_tile_bin_edge,
+            ping_tile_bin_edge,
+        ) = self.get_tile_params(
+            r_data_sz=proc_data.range_bin.size,
+            p_data_sz=proc_data.ping_time.size,
+            r_tile_sz=self.noise_est_range_bin_size,
+            p_tile_sz=self.noise_est_ping_size,
+            sample_thickness=self.sample_thickness,
+        )
 
         # Values for noise estimates
         range_meter = self.range
@@ -509,43 +591,67 @@ class ProcessBase(object):
         ABS = 2 * self.seawater_absorption * range_meter
 
         # Noise estimates
-        proc_data['power_cal'] = 10 ** ((proc_data.Sv - ABS - TVG) / 10)
+        proc_data["power_cal"] = 10 ** ((proc_data.Sv - ABS - TVG) / 10)
         # check if number of range_bin per tile the same for all freq channels
         if np.unique([np.array(x).size for x in range_bin_tile_bin_edge]).size == 1:
-            noise_est = 10 * np.log10(proc_data['power_cal'].coarsen(
-                ping_time=self.noise_est_ping_size,
-                range_bin=int(np.unique(self.noise_est_range_bin_size / self.sample_thickness)),
-                boundary='pad').mean().min(dim='range_bin'))
+            noise_est = 10 * np.log10(
+                proc_data["power_cal"]
+                .coarsen(
+                    ping_time=self.noise_est_ping_size,
+                    range_bin=int(np.unique(self.noise_est_range_bin_size / self.sample_thickness)),
+                    boundary="pad",
+                )
+                .mean()
+                .min(dim="range_bin")
+            )
         else:
-            range_bin_coarsen_idx = (self.noise_est_range_bin_size / self.sample_thickness).astype(int)
+            range_bin_coarsen_idx = (self.noise_est_range_bin_size / self.sample_thickness).astype(
+                int
+            )
             tmp_noise = []
             for r_bin in range_bin_coarsen_idx:
                 freq = r_bin.frequency.values
-                tmp_da = 10 * np.log10(proc_data['power_cal'].sel(frequency=freq).coarsen(
-                    ping_time=self.noise_est_ping_size,
-                    range_bin=r_bin.values,
-                    boundary='pad').mean().min(dim='range_bin'))
-                tmp_da.name = 'noise_est'
+                tmp_da = 10 * np.log10(
+                    proc_data["power_cal"]
+                    .sel(frequency=freq)
+                    .coarsen(
+                        ping_time=self.noise_est_ping_size, range_bin=r_bin.values, boundary="pad"
+                    )
+                    .mean()
+                    .min(dim="range_bin")
+                )
+                tmp_da.name = "noise_est"
                 tmp_noise.append(tmp_da)
 
             # Construct a dataArray  TODO: this can probably be done smarter using xarray native functions
-            noise_val = np.array([zz.values for zz in xr.align(*tmp_noise, join='outer')])
-            noise_est = xr.DataArray(noise_val,
-                                coords={'frequency': proc_data['frequency'].values,
-                                        'ping_time': tmp_noise[0]['ping_time'].values},
-                                dims=['frequency', 'ping_time'])
-        noise_est = noise_est.to_dataset(name='noise_est')
-        noise_est['noise_est_range_bin_size'] = ('frequency', self.noise_est_range_bin_size)
-        noise_est.attrs['noise_est_ping_size'] = self.noise_est_ping_size
+            noise_val = np.array([zz.values for zz in xr.align(*tmp_noise, join="outer")])
+            noise_est = xr.DataArray(
+                noise_val,
+                coords={
+                    "frequency": proc_data["frequency"].values,
+                    "ping_time": tmp_noise[0]["ping_time"].values,
+                },
+                dims=["frequency", "ping_time"],
+            )
+        noise_est = noise_est.to_dataset(name="noise_est")
+        noise_est["noise_est_range_bin_size"] = ("frequency", self.noise_est_range_bin_size)
+        noise_est.attrs["noise_est_ping_size"] = self.noise_est_ping_size
 
         # Close opened resources
         proc_data.close()
 
         return noise_est
 
-    def get_MVBS(self, source_postfix='_Sv', source_path=None,
-                 MVBS_range_bin_size=None, MVBS_ping_size=None,
-                 save=False, save_postfix='_MVBS', save_path=None):
+    def get_MVBS(
+        self,
+        source_postfix="_Sv",
+        source_path=None,
+        MVBS_range_bin_size=None,
+        MVBS_ping_size=None,
+        save=False,
+        save_postfix="_MVBS",
+        save_path=None,
+    ):
         """Calculate Mean Volume Backscattering Strength (MVBS).
 
         The calculation uses class attributes MVBS_ping_size and MVBS_range_bin_size to
@@ -584,12 +690,15 @@ class ProcessBase(object):
 
         # Get Sv by validating path and calibrate if not already done
         if self.Sv is not None:
-            print('%s  use Sv stored in memory to calculate MVBS' % dt.datetime.now().strftime('%H:%M:%S'))
+            print(
+                "%s  use Sv stored in memory to calculate MVBS"
+                % dt.datetime.now().strftime("%H:%M:%S")
+            )
             print_src = False
         else:
             print_src = True
 
-        if source_postfix == '_Sv_clean':
+        if source_postfix == "_Sv_clean":
             if self.Sv_clean is None:
                 self.remove_noise()
             proc_data = self.Sv_clean
@@ -598,60 +707,79 @@ class ProcessBase(object):
 
         if print_src:
             if self.Sv_path is not None:
-                print('%s  Sv source used to calculate MVBS: %s' %
-                      (dt.datetime.now().strftime('%H:%M:%S'), self.Sv_path))
+                print(
+                    "%s  Sv source used to calculate MVBS: %s"
+                    % (dt.datetime.now().strftime("%H:%M:%S"), self.Sv_path)
+                )
             else:
-                print('%s  Sv source used to calculate MVBS: memory' %
-                      dt.datetime.now().strftime('%H:%M:%S'))
+                print(
+                    "%s  Sv source used to calculate MVBS: memory"
+                    % dt.datetime.now().strftime("%H:%M:%S")
+                )
 
         # Get tile indexing parameters
-        self.MVBS_range_bin_size, range_bin_tile_bin_edge, ping_tile_bin_edge = \
-            self.get_tile_params(r_data_sz=proc_data.range_bin.size,
-                                 p_data_sz=proc_data.ping_time.size,
-                                 r_tile_sz=self.MVBS_range_bin_size,
-                                 p_tile_sz=self.MVBS_ping_size,
-                                 sample_thickness=self.sample_thickness)
+        (
+            self.MVBS_range_bin_size,
+            range_bin_tile_bin_edge,
+            ping_tile_bin_edge,
+        ) = self.get_tile_params(
+            r_data_sz=proc_data.range_bin.size,
+            p_data_sz=proc_data.ping_time.size,
+            r_tile_sz=self.MVBS_range_bin_size,
+            p_tile_sz=self.MVBS_ping_size,
+            sample_thickness=self.sample_thickness,
+        )
         # Calculate MVBS
         Sv_linear = 10 ** (proc_data.Sv / 10)  # convert to linear domain before averaging
         # check if number of range_bin per tile the same for all freq channels
         if np.unique([np.array(x).size for x in range_bin_tile_bin_edge]).size == 1:
-            MVBS = 10 * np.log10(Sv_linear.coarsen(
-                ping_time=self.MVBS_ping_size,
-                range_bin=int(np.unique(self.MVBS_range_bin_size / self.sample_thickness)),
-                boundary='pad').mean())
-            MVBS.coords['range_bin'] = ('range_bin', np.arange(MVBS['range_bin'].size))
+            MVBS = 10 * np.log10(
+                Sv_linear.coarsen(
+                    ping_time=self.MVBS_ping_size,
+                    range_bin=int(np.unique(self.MVBS_range_bin_size / self.sample_thickness)),
+                    boundary="pad",
+                ).mean()
+            )
+            MVBS.coords["range_bin"] = ("range_bin", np.arange(MVBS["range_bin"].size))
         else:
             range_bin_coarsen_idx = (self.MVBS_range_bin_size / self.sample_thickness).astype(int)
             tmp_MVBS = []
             for r_bin in range_bin_coarsen_idx:
                 freq = r_bin.frequency.values
-                tmp_da = 10 * np.log10(Sv_linear.sel(frequency=freq).coarsen(
-                        ping_time=self.MVBS_ping_size,
-                        range_bin=r_bin.values,
-                        boundary='pad').mean())
-                tmp_da.coords['range_bin'] = ('range_bin', np.arange(tmp_da['range_bin'].size))
-                tmp_da.name = 'MVBS'
+                tmp_da = 10 * np.log10(
+                    Sv_linear.sel(frequency=freq)
+                    .coarsen(ping_time=self.MVBS_ping_size, range_bin=r_bin.values, boundary="pad")
+                    .mean()
+                )
+                tmp_da.coords["range_bin"] = ("range_bin", np.arange(tmp_da["range_bin"].size))
+                tmp_da.name = "MVBS"
                 tmp_MVBS.append(tmp_da)
 
             # Construct a dataArray  TODO: this can probably be done smarter using xarray native functions
-            MVBS_val = np.array([zz.values for zz in xr.align(*tmp_MVBS, join='outer')])
-            MVBS = xr.DataArray(MVBS_val,
-                                coords={'frequency': Sv_linear['frequency'].values,
-                                        'ping_time': tmp_MVBS[0]['ping_time'].values,
-                                        'range_bin': np.arange(MVBS_val.shape[2])},
-                                dims=['frequency', 'ping_time', 'range_bin']).dropna(dim='range_bin', how='all')
+            MVBS_val = np.array([zz.values for zz in xr.align(*tmp_MVBS, join="outer")])
+            MVBS = xr.DataArray(
+                MVBS_val,
+                coords={
+                    "frequency": Sv_linear["frequency"].values,
+                    "ping_time": tmp_MVBS[0]["ping_time"].values,
+                    "range_bin": np.arange(MVBS_val.shape[2]),
+                },
+                dims=["frequency", "ping_time", "range_bin"],
+            ).dropna(dim="range_bin", how="all")
 
         # Set MVBS attributes
-        MVBS.name = 'MVBS'
+        MVBS.name = "MVBS"
         MVBS = MVBS.to_dataset()
-        MVBS['MVBS_range_bin_size'] = ('frequency', self.MVBS_range_bin_size)
-        MVBS.attrs['MVBS_ping_size'] = self.MVBS_ping_size
+        MVBS["MVBS_range_bin_size"] = ("frequency", self.MVBS_range_bin_size)
+        MVBS.attrs["MVBS_ping_size"] = self.MVBS_ping_size
 
         # Save results in object and as a netCDF file
         self.MVBS = MVBS
         if save:
             self.MVBS_path = self.validate_path(save_path=save_path, save_postfix=save_postfix)
-            print('%s  saving MVBS to %s' % (dt.datetime.now().strftime('%H:%M:%S'), self.MVBS_path))
+            print(
+                "%s  saving MVBS to %s" % (dt.datetime.now().strftime("%H:%M:%S"), self.MVBS_path)
+            )
             self._save_dataset(MVBS, self.MVBS_path)
 
         # Close opened resources
@@ -670,13 +798,13 @@ class ProcessBase(object):
         path : str
             output file
         """
-        if self._file_format == 'netcdf':
+        if self._file_format == "netcdf":
             ds.to_netcdf(path, mode=mode)
-        elif self._file_format == 'zarr':
+        elif self._file_format == "zarr":
             ds.to_zarr(path, mode=mode)
 
     def _set_open_dataset(self):
-        if self._file_format == 'netcdf':
+        if self._file_format == "netcdf":
             self._open_dataset = xr.open_dataset
-        elif self._file_format == 'zarr':
+        elif self._file_format == "zarr":
             self._open_dataset = xr.open_zarr

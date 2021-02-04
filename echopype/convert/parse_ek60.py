@@ -10,9 +10,9 @@ class ParseEK60(ParseEK):
 
     def _select_datagrams(self, params):
         # Translates user input into specific datagrams or ALL
-        if params == 'ALL':
-            return ['ALL']
-        elif params == 'GPS':
-            return ['NME']
+        if params == "ALL":
+            return ["ALL"]
+        elif params == "GPS":
+            return ["NME"]
         else:
             raise ValueError("Unknown data type", params)

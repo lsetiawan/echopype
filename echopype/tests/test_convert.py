@@ -1,6 +1,6 @@
 """test_convert.py
 
-This module contain all the various tests for echopype conversion 
+This module contain all the various tests for echopype conversion
 from a raw data to standard compliant zarr or netcdf file(s).
 
 **Note that in order to run this test, minio server is required for s3
@@ -8,12 +8,14 @@ output tests.**
 """
 
 
-import os
 import glob
-import fsspec
-import xarray as xr
-import pytest
+import os
 from pathlib import Path
+
+import fsspec
+import pytest
+import xarray as xr
+
 from ..convert import Convert
 
 
@@ -26,17 +28,17 @@ def _check_file_group(data_file, engine, groups):
 
 def _check_output_files(engine, output_files, storage_options):
     groups = [
-        'Provenance',
-        'Environment',
-        'Beam',
-        'Sonar',
-        'Vendor',
-        'Platform',
+        "Provenance",
+        "Environment",
+        "Beam",
+        "Sonar",
+        "Vendor",
+        "Platform",
     ]
     if isinstance(output_files, list):
         fs = fsspec.get_mapper(output_files[0], **storage_options).fs
         for f in output_files:
-            if engine == 'zarr':
+            if engine == "zarr":
                 _check_file_group(fs.get_mapper(f), engine, groups)
                 fs.delete(f, recursive=True)
             else:
@@ -44,7 +46,7 @@ def _check_output_files(engine, output_files, storage_options):
                 fs.delete(f)
     else:
         fs = fsspec.get_mapper(output_files, **storage_options).fs
-        if engine == 'zarr':
+        if engine == "zarr":
             _check_file_group(fs.get_mapper(output_files), engine, groups)
             fs.delete(output_files, recursive=True)
         else:
@@ -53,7 +55,7 @@ def _check_output_files(engine, output_files, storage_options):
 
 
 def _download_file(source_url, target_url):
-    fs = fsspec.filesystem('file')
+    fs = fsspec.filesystem("file")
     if not fs.exists(os.path.dirname(target_url)):
         fs.mkdir(os.path.dirname(target_url))
 
@@ -65,13 +67,13 @@ def _download_file(source_url, target_url):
 
 @pytest.fixture(scope="session")
 def minio_bucket():
-    bucket_name = 'ooi-raw-data'
+    bucket_name = "ooi-raw-data"
     fs = fsspec.filesystem(
-        's3',
+        "s3",
         **dict(
-            client_kwargs=dict(endpoint_url='http://localhost:9000/'),
-            key='minioadmin',
-            secret='minioadmin',
+            client_kwargs=dict(endpoint_url="http://localhost:9000/"),
+            key="minioadmin",
+            secret="minioadmin",
         ),
     )
     if not fs.exists(bucket_name):
@@ -80,25 +82,15 @@ def minio_bucket():
 
 @pytest.fixture(scope="session")
 def download_files():
-    ek60_source = 'https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw'
-    ek80_source = 'https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK80/D20170826-T205615.raw'
-    azfp_source = 'https://rawdata.oceanobservatories.org/files/CE01ISSM/R00007/instrmts/dcl37/ZPLSC_sn55075/ce01issm_zplsc_55075_recovered_2017-10-27/DATA/201703/17032923.01A'
-    azfp_xml_source = 'https://rawdata.oceanobservatories.org/files/CE01ISSM/R00007/instrmts/dcl37/ZPLSC_sn55075/ce01issm_zplsc_55075_recovered_2017-10-27/DATA/201703/17032922.XML'
+    ek60_source = "https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw"
+    ek80_source = "https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK80/D20170826-T205615.raw"
+    azfp_source = "https://rawdata.oceanobservatories.org/files/CE01ISSM/R00007/instrmts/dcl37/ZPLSC_sn55075/ce01issm_zplsc_55075_recovered_2017-10-27/DATA/201703/17032923.01A"
+    azfp_xml_source = "https://rawdata.oceanobservatories.org/files/CE01ISSM/R00007/instrmts/dcl37/ZPLSC_sn55075/ce01issm_zplsc_55075_recovered_2017-10-27/DATA/201703/17032922.XML"
 
-    ek60_path = os.path.join(
-        './echopype/test_data/ek60/ncei-wcsd',
-        os.path.basename(ek60_source),
-    )
-    ek80_path = os.path.join(
-        './echopype/test_data/ek80/ncei-wcsd',
-        os.path.basename(ek80_source),
-    )
-    azfp_path = os.path.join(
-        './echopype/test_data/azfp/ooi', os.path.basename(azfp_source)
-    )
-    azfp_xml_path = os.path.join(
-        './echopype/test_data/azfp/ooi', os.path.basename(azfp_xml_source)
-    )
+    ek60_path = os.path.join("./echopype/test_data/ek60/ncei-wcsd", os.path.basename(ek60_source),)
+    ek80_path = os.path.join("./echopype/test_data/ek80/ncei-wcsd", os.path.basename(ek80_source),)
+    azfp_path = os.path.join("./echopype/test_data/azfp/ooi", os.path.basename(azfp_source))
+    azfp_xml_path = os.path.join("./echopype/test_data/azfp/ooi", os.path.basename(azfp_xml_source))
     download_paths = [
         (ek60_source, ek60_path),
         (ek80_source, ek80_path),
@@ -136,11 +128,11 @@ def test_validate_path_single_source(
 ):
 
     output_storage_options = {}
-    if output_save_path and output_save_path.startswith('s3://'):
+    if output_save_path and output_save_path.startswith("s3://"):
         output_storage_options = dict(
-            client_kwargs=dict(endpoint_url='http://localhost:9000/'),
-            key='minioadmin',
-            secret='minioadmin',
+            client_kwargs=dict(endpoint_url="http://localhost:9000/"),
+            key="minioadmin",
+            secret="minioadmin",
         )
     fsmap = fsspec.get_mapper(input_path)
     single_dir = os.path.dirname(fsmap.root)
@@ -148,58 +140,46 @@ def test_validate_path_single_source(
     tmp_single = Convert(input_path, model=model)
     tmp_single._output_storage_options = output_storage_options
 
-    tmp_single._validate_path(
-        file_format=file_format, save_path=output_save_path
-    )
+    tmp_single._validate_path(file_format=file_format, save_path=output_save_path)
 
     if output_save_path is not None:
-        fsmap_tmp = fsspec.get_mapper(
-            output_save_path, **output_storage_options
-        )
+        fsmap_tmp = fsspec.get_mapper(output_save_path, **output_storage_options)
         fs = fsmap_tmp.fs
-        if not output_save_path.startswith('s3'):
-            if output_save_path.endswith('/'):
+        if not output_save_path.startswith("s3"):
+            if output_save_path.endswith("/"):
                 # if an output folder is given, below works with and without the slash at the end
                 assert tmp_single.output_file == [
-                    os.path.join(fsmap_tmp.root, single_fname + '.zarr')
+                    os.path.join(fsmap_tmp.root, single_fname + ".zarr")
                 ]
-            elif output_save_path.endswith('.zarr'):
+            elif output_save_path.endswith(".zarr"):
                 # if an output filename is given
                 assert tmp_single.output_file == [fsmap_tmp.root]
             else:
                 # force output file extension to the called type (here .zarr)
-                assert tmp_single.output_file == [
-                    os.path.splitext(fsmap_tmp.root)[0] + '.zarr'
-                ]
+                assert tmp_single.output_file == [os.path.splitext(fsmap_tmp.root)[0] + ".zarr"]
             os.rmdir(os.path.dirname(tmp_single.output_file[0]))
         else:
-            if output_save_path.endswith('/'):
+            if output_save_path.endswith("/"):
                 # if an output folder is given, below works with and without the slash at the end
                 assert tmp_single.output_file == [
-                    os.path.join(output_save_path, single_fname + '.zarr')
+                    os.path.join(output_save_path, single_fname + ".zarr")
                 ]
-            elif output_save_path.endswith('.zarr'):
+            elif output_save_path.endswith(".zarr"):
                 # if an output filename is given
                 assert tmp_single.output_file == [output_save_path]
             else:
                 # force output file extension to the called type (here .zarr)
-                assert tmp_single.output_file == [
-                    os.path.splitext(output_save_path)[0] + '.zarr'
-                ]
+                assert tmp_single.output_file == [os.path.splitext(output_save_path)[0] + ".zarr"]
             fs.delete(tmp_single.output_file[0])
     else:
-        if input_path.startswith('https') or input_path.startswith('s3'):
+        if input_path.startswith("https") or input_path.startswith("s3"):
             current_dir = Path.cwd()
-            temp_dir = current_dir.joinpath(Path('temp_echopype_output'))
-            assert tmp_single.output_file == [
-                str(temp_dir.joinpath(Path(single_fname + '.zarr')))
-            ]
+            temp_dir = current_dir.joinpath(Path("temp_echopype_output"))
+            assert tmp_single.output_file == [str(temp_dir.joinpath(Path(single_fname + ".zarr")))]
             os.rmdir(os.path.dirname(tmp_single.output_file[0]))
         else:
             # if no output path is given
-            assert tmp_single.output_file == [
-                os.path.join(single_dir, single_fname + '.zarr')
-            ]
+            assert tmp_single.output_file == [os.path.join(single_dir, single_fname + ".zarr")]
 
 
 @pytest.mark.parametrize("model", ["EK60"])
@@ -209,7 +189,7 @@ def test_validate_path_single_source(
     [
         "./echopype/test_data/ek60/*.raw",
         [
-            'https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw',
+            "https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw",
         ],
     ],
 )
@@ -229,11 +209,11 @@ def test_validate_path_multiple_source(
     model, file_format, input_path, output_save_path, minio_bucket
 ):
     output_storage_options = {}
-    if output_save_path and output_save_path.startswith('s3://'):
+    if output_save_path and output_save_path.startswith("s3://"):
         output_storage_options = dict(
-            client_kwargs=dict(endpoint_url='http://localhost:9000/'),
-            key='minioadmin',
-            secret='minioadmin',
+            client_kwargs=dict(endpoint_url="http://localhost:9000/"),
+            key="minioadmin",
+            secret="minioadmin",
         )
 
     if isinstance(input_path, str):
@@ -242,80 +222,61 @@ def test_validate_path_multiple_source(
         mult_path = input_path
     fsmap = fsspec.get_mapper(mult_path[0])
     mult_dir = os.path.dirname(fsmap.root)
-    tmp_mult = Convert(mult_path, model='EK60')
+    tmp_mult = Convert(mult_path, model="EK60")
     tmp_mult._output_storage_options = output_storage_options
 
-    tmp_mult._validate_path(
-        file_format=file_format, save_path=output_save_path
-    )
+    tmp_mult._validate_path(file_format=file_format, save_path=output_save_path)
 
     if output_save_path is not None:
-        fsmap_tmp = fsspec.get_mapper(
-            output_save_path, **output_storage_options
-        )
+        fsmap_tmp = fsspec.get_mapper(output_save_path, **output_storage_options)
         fs = fsmap_tmp.fs
-        if not output_save_path.startswith('s3'):
-            if output_save_path.endswith('/'):
+        if not output_save_path.startswith("s3"):
+            if output_save_path.endswith("/"):
                 # if an output folder is given, below works with and without the slash at the end
                 assert tmp_mult.output_file == [
                     os.path.join(
-                        fsmap_tmp.root,
-                        os.path.splitext(os.path.basename(f))[0] + '.zarr',
+                        fsmap_tmp.root, os.path.splitext(os.path.basename(f))[0] + ".zarr",
                     )
                     for f in mult_path
                 ]
-            elif output_save_path.endswith('.zarr'):
+            elif output_save_path.endswith(".zarr"):
                 # if an output filename is given: only use the directory
-                assert tmp_mult.output_file == [
-                    os.path.abspath(output_save_path)
-                ]
-            elif output_save_path.endswith('.nc'):
+                assert tmp_mult.output_file == [os.path.abspath(output_save_path)]
+            elif output_save_path.endswith(".nc"):
                 # force output file extension to the called type (here .zarr)
                 assert tmp_mult.output_file == [
-                    os.path.abspath(output_save_path.replace('.nc', '.zarr'))
+                    os.path.abspath(output_save_path.replace(".nc", ".zarr"))
                 ]
             os.rmdir(os.path.dirname(tmp_mult.output_file[0]))
         else:
-            if output_save_path.endswith('/'):
+            if output_save_path.endswith("/"):
                 # if an output folder is given, below works with and without the slash at the end
                 assert tmp_mult.output_file == [
                     os.path.join(
-                        output_save_path,
-                        os.path.splitext(os.path.basename(f))[0] + '.zarr',
+                        output_save_path, os.path.splitext(os.path.basename(f))[0] + ".zarr",
                     )
                     for f in mult_path
                 ]
-            elif output_save_path.endswith('.zarr'):
+            elif output_save_path.endswith(".zarr"):
                 # if an output filename is given: only use the directory
                 assert tmp_mult.output_file == [output_save_path]
-            elif output_save_path.endswith('.nc'):
+            elif output_save_path.endswith(".nc"):
                 # force output file extension to the called type (here .zarr)
-                assert tmp_mult.output_file == [
-                    output_save_path.replace('.nc', '.zarr')
-                ]
+                assert tmp_mult.output_file == [output_save_path.replace(".nc", ".zarr")]
             fs.delete(tmp_mult.output_file[0])
     else:
-        if input_path[0].startswith('https') or input_path[0].startswith('s3'):
+        if input_path[0].startswith("https") or input_path[0].startswith("s3"):
             current_dir = Path.cwd()
-            temp_dir = current_dir.joinpath(Path('temp_echopype_output'))
+            temp_dir = current_dir.joinpath(Path("temp_echopype_output"))
             assert tmp_mult.output_file == [
-                str(
-                    temp_dir.joinpath(
-                        Path(
-                            os.path.splitext(os.path.basename(f))[0] + '.zarr'
-                        )
-                    )
-                )
+                str(temp_dir.joinpath(Path(os.path.splitext(os.path.basename(f))[0] + ".zarr")))
                 for f in mult_path
             ]
             os.rmdir(os.path.dirname(tmp_mult.output_file[0]))
         else:
             # if no output path is given
             assert tmp_mult.output_file == [
-                os.path.join(
-                    mult_dir,
-                    os.path.splitext(os.path.basename(f))[0] + '.zarr',
-                )
+                os.path.join(mult_dir, os.path.splitext(os.path.basename(f))[0] + ".zarr",)
                 for f in mult_path
             ]
 
@@ -328,8 +289,8 @@ def test_validate_path_multiple_source(
         "https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw",
         "s3://ncei-wcsd-archive/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw",
         [
-            'https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw',
-            'https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190843.raw',
+            "https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190214.raw",
+            "https://ncei-wcsd-archive.s3-us-west-2.amazonaws.com/data/raw/Bell_M._Shimada/SH1707/EK60/Summer2017-D20170615-T190843.raw",
         ],
     ],
 )
@@ -348,35 +309,27 @@ def test_validate_path_multiple_source(
 )
 @pytest.mark.parametrize("combine_files", [False])
 def test_convert_ek60(
-    model,
-    input_path,
-    export_engine,
-    output_save_path,
-    combine_files,
-    minio_bucket,
-    download_files,
+    model, input_path, export_engine, output_save_path, combine_files, minio_bucket, download_files,
 ):
     output_storage_options = {}
     ipath = input_path
     if isinstance(input_path, list):
         ipath = input_path[0]
 
-    input_storage_options = {'anon': True} if ipath.startswith('s3://') else {}
-    if output_save_path and output_save_path.startswith('s3://'):
+    input_storage_options = {"anon": True} if ipath.startswith("s3://") else {}
+    if output_save_path and output_save_path.startswith("s3://"):
         output_storage_options = dict(
-            client_kwargs=dict(endpoint_url='http://localhost:9000/'),
-            key='minioadmin',
-            secret='minioadmin',
+            client_kwargs=dict(endpoint_url="http://localhost:9000/"),
+            key="minioadmin",
+            secret="minioadmin",
         )
 
-    ec = Convert(
-        file=input_path, model=model, storage_options=input_storage_options
-    )
+    ec = Convert(file=input_path, model=model, storage_options=input_storage_options)
 
     if (
-        export_engine == 'netcdf4'
+        export_engine == "netcdf4"
         and output_save_path is not None
-        and output_save_path.startswith('s3://')
+        and output_save_path.startswith("s3://")
     ):
         return
     ec._to_file(
@@ -434,27 +387,24 @@ def test_convert_azfp(
     if isinstance(input_path, list):
         ipath = input_path[0]
 
-    input_storage_options = {'anon': True} if ipath.startswith('s3://') else {}
-    if output_save_path and output_save_path.startswith('s3://'):
+    input_storage_options = {"anon": True} if ipath.startswith("s3://") else {}
+    if output_save_path and output_save_path.startswith("s3://"):
         output_storage_options = dict(
-            client_kwargs=dict(endpoint_url='http://localhost:9000/'),
-            key='minioadmin',
-            secret='minioadmin',
+            client_kwargs=dict(endpoint_url="http://localhost:9000/"),
+            key="minioadmin",
+            secret="minioadmin",
         )
 
     ec = Convert(
-        file=input_path,
-        xml_path=xml_path,
-        model=model,
-        storage_options=input_storage_options,
+        file=input_path, xml_path=xml_path, model=model, storage_options=input_storage_options,
     )
 
     assert ec.xml_path == xml_path
 
     if (
-        export_engine == 'netcdf4'
+        export_engine == "netcdf4"
         and output_save_path is not None
-        and output_save_path.startswith('s3://')
+        and output_save_path.startswith("s3://")
     ):
         return
     ec._to_file(
@@ -492,35 +442,27 @@ def test_convert_azfp(
 )
 @pytest.mark.parametrize("combine_files", [False])
 def test_convert_ek80(
-    model,
-    input_path,
-    export_engine,
-    output_save_path,
-    combine_files,
-    minio_bucket,
-    download_files,
+    model, input_path, export_engine, output_save_path, combine_files, minio_bucket, download_files,
 ):
     output_storage_options = {}
     ipath = input_path
     if isinstance(input_path, list):
         ipath = input_path[0]
 
-    input_storage_options = {'anon': True} if ipath.startswith('s3://') else {}
-    if output_save_path and output_save_path.startswith('s3://'):
+    input_storage_options = {"anon": True} if ipath.startswith("s3://") else {}
+    if output_save_path and output_save_path.startswith("s3://"):
         output_storage_options = dict(
-            client_kwargs=dict(endpoint_url='http://localhost:9000/'),
-            key='minioadmin',
-            secret='minioadmin',
+            client_kwargs=dict(endpoint_url="http://localhost:9000/"),
+            key="minioadmin",
+            secret="minioadmin",
         )
 
-    ec = Convert(
-        file=input_path, model=model, storage_options=input_storage_options
-    )
+    ec = Convert(file=input_path, model=model, storage_options=input_storage_options)
 
     if (
-        export_engine == 'netcdf4'
+        export_engine == "netcdf4"
         and output_save_path is not None
-        and output_save_path.startswith('s3://')
+        and output_save_path.startswith("s3://")
     ):
         return
     ec._to_file(

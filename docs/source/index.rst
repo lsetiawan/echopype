@@ -64,4 +64,3 @@ License
 -------
 
 Echopype is licensed under the open source Apache 2.0 license.
-

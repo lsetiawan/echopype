@@ -1,34 +1,40 @@
 import os
+
 import numpy as np
 import pandas as pd
-import xarray as xr
 import pytest
+import xarray as xr
+
 from ..convert import Convert
-from ..process import Process, EchoData
+from ..process import EchoData, Process
 
 # ek60_raw_path = './echopype/test_data/ek60/2015843-D20151023-T190636.raw'   # Varying ranges
-ek60_raw_path = './echopype/test_data/ek60/DY1801_EK60-D20180211-T164025.raw'     # Constant ranges
-ek60_test_path = './echopype/test_data/ek60/from_matlab/DY1801_EK60-D20180211-T164025_Sv_TS.nc'
+ek60_raw_path = "./echopype/test_data/ek60/DY1801_EK60-D20180211-T164025.raw"  # Constant ranges
+ek60_test_path = "./echopype/test_data/ek60/from_matlab/DY1801_EK60-D20180211-T164025_Sv_TS.nc"
 # Volume backscattering strength aqcuired from EchoView
-ek60_csv_paths = ['./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv18.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv38.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv70.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv120.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv200.csv']
-nc_path = os.path.join(os.path.dirname(ek60_raw_path),
-                       os.path.splitext(os.path.basename(ek60_raw_path))[0] + '.nc')
-Sv_path = os.path.join(os.path.dirname(ek60_raw_path),
-                       os.path.splitext(os.path.basename(ek60_raw_path))[0] + '_Sv.nc')
+ek60_csv_paths = [
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv18.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv38.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv70.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv120.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv200.csv",
+]
+nc_path = os.path.join(
+    os.path.dirname(ek60_raw_path), os.path.splitext(os.path.basename(ek60_raw_path))[0] + ".nc"
+)
+Sv_path = os.path.join(
+    os.path.dirname(ek60_raw_path), os.path.splitext(os.path.basename(ek60_raw_path))[0] + "_Sv.nc"
+)
 
 
-@pytest.mark.skip(reason='Noise estimates not yet implemented')
+@pytest.mark.skip(reason="Noise estimates not yet implemented")
 def test_noise_estimates_removal():
     """Check noise estimation and noise removal using xarray and brute force using numpy.
     """
 
     # Noise estimation via Process method =========
     # Unpack data and convert to .nc file
-    tmp = Convert(ek60_raw_path, model='EK60')
+    tmp = Convert(ek60_raw_path, model="EK60")
     tmp.to_netcdf()
 
     # Read .nc file into an Process object and calibrate
@@ -39,18 +45,25 @@ def test_noise_estimates_removal():
     with xr.open_dataset(ek60_test_path) as ds_test:
         ds_Sv = ds_test.Sv
 
-    assert np.allclose(ds_Sv.values, e_data.Sv['Sv'].values, atol=1e-10)  # TODO: now identical to 1e-5 with matlab output
+    assert np.allclose(
+        ds_Sv.values, e_data.Sv["Sv"].values, atol=1e-10
+    )  # TODO: now identical to 1e-5 with matlab output
     # assert np.allclose(ds_TS.values, e_data.TS.TS.values, atol=1e-10)
     # Noise estimation via numpy brute force =======
     proc_data = xr.open_dataset(Sv_path)
 
     # Get tile indexing parameters
-    e_data.noise_est_range_bin_size, range_bin_tile_bin_edge, ping_tile_bin_edge = \
-        e_data.get_tile_params(r_data_sz=proc_data.range_bin.size,
-                               p_data_sz=proc_data.ping_time.size,
-                               r_tile_sz=e_data.noise_est_range_bin_size,
-                               p_tile_sz=e_data.noise_est_ping_size,
-                               sample_thickness=e_data.sample_thickness)
+    (
+        e_data.noise_est_range_bin_size,
+        range_bin_tile_bin_edge,
+        ping_tile_bin_edge,
+    ) = e_data.get_tile_params(
+        r_data_sz=proc_data.range_bin.size,
+        p_data_sz=proc_data.ping_time.size,
+        r_tile_sz=e_data.noise_est_range_bin_size,
+        p_tile_sz=e_data.noise_est_ping_size,
+        sample_thickness=e_data.sample_thickness,
+    )
 
     range_bin_tile_bin_edge = np.unique(range_bin_tile_bin_edge)
 
@@ -65,7 +78,11 @@ def test_noise_estimates_removal():
     noise_est_test = np.empty((proc_data.frequency.size, num_ping_bins))  # all columns
     p_sz = e_data.noise_est_ping_size
     p_idx = np.arange(p_sz, dtype=int)
-    r_sz = (e_data.noise_est_range_bin_size.max() / e_data.sample_thickness[0].values).astype(int).values
+    r_sz = (
+        (e_data.noise_est_range_bin_size.max() / e_data.sample_thickness[0].values)
+        .astype(int)
+        .values
+    )
     r_idx = np.arange(r_sz, dtype=int)
 
     # Get noise estimates manually
@@ -93,20 +110,27 @@ def test_noise_estimates_removal():
     Sv_clean_test = np.empty(proc_data.Sv.shape)
     for ff, freq in enumerate(proc_data.frequency.values):
         for pp in np.arange(num_ping_bins):
-            if pp == num_ping_bins - 1:    # if the last ping bin
+            if pp == num_ping_bins - 1:  # if the last ping bin
                 pp_idx = np.arange(p_sz * pp, power_cal_test.shape[1])
-            else:                          # all other ping bins
+            else:  # all other ping bins
                 pp_idx = p_idx + p_sz * pp
-            ss_tmp = proc_data['Sv'].sel(frequency=freq).values[pp_idx, :]   # all data in this ping bin
-            nn_tmp = (noise_est['noise_est'].sel(frequency=freq).isel(ping_time=pp) +
-                      ABS.sel(frequency=freq) + TVG.sel(frequency=freq)).values
+            ss_tmp = (
+                proc_data["Sv"].sel(frequency=freq).values[pp_idx, :]
+            )  # all data in this ping bin
+            nn_tmp = (
+                noise_est["noise_est"].sel(frequency=freq).isel(ping_time=pp)
+                + ABS.sel(frequency=freq)
+                + TVG.sel(frequency=freq)
+            ).values
             Sv_clean_tmp = ss_tmp.copy()
             Sv_clean_tmp[Sv_clean_tmp <= nn_tmp] = np.nan
             Sv_clean_test[ff, pp_idx, :] = Sv_clean_tmp
 
     # Check xarray and numpy noise removal
-    assert ~np.any(e_data.Sv_clean['Sv'].values[~np.isnan(e_data.Sv_clean['Sv'].values)]
-                   != Sv_clean_test[~np.isnan(Sv_clean_test)])
+    assert ~np.any(
+        e_data.Sv_clean["Sv"].values[~np.isnan(e_data.Sv_clean["Sv"].values)]
+        != Sv_clean_test[~np.isnan(Sv_clean_test)]
+    )
 
     proc_data.close()
     del tmp
@@ -116,21 +140,24 @@ def test_noise_estimates_removal():
 
 
 def test_calibration_ek60_echoview():
-    tmp = Convert(ek60_raw_path, model='EK60')
+    tmp = Convert(ek60_raw_path, model="EK60")
     tmp.to_netcdf()
 
     # Read .nc file into an Process object and calibrate
     ed = EchoData(raw_path=tmp.output_file)
-    proc = Process(model='EK60', ed=ed)
-    proc.calibrate(ed, save=True, save_format='netcdf4')
+    proc = Process(model="EK60", ed=ed)
+    proc.calibrate(ed, save=True, save_format="netcdf4")
 
     channels = []
     for file in ek60_csv_paths:
         channels.append(pd.read_csv(file, header=None, skiprows=[0]).iloc[:, 13:])
     test_Sv = np.stack(channels)
     # Echoview data is missing 1 range. Also the first few ranges are handled differently
-    assert np.allclose(test_Sv[:, :, 7:],
-                       ed.Sv.Sv.isel(ping_time=slice(None, 10), range_bin=slice(8, None)), atol=1e-8)
+    assert np.allclose(
+        test_Sv[:, :, 7:],
+        ed.Sv.Sv.isel(ping_time=slice(None, 10), range_bin=slice(8, None)),
+        atol=1e-8,
+    )
     ed.close()
     os.remove(ed.Sv_path)
     os.remove(tmp.output_file)
@@ -140,25 +167,26 @@ def test_calibrate():
     # General calibration test
 
     # Use raw files for environment parameters
-    tmp = Convert(ek60_raw_path, model='EK60')
+    tmp = Convert(ek60_raw_path, model="EK60")
     tmp.to_netcdf()
     # Overwrite beam group with array of 1
-    with xr.open_dataset(tmp.output_file, group='Beam') as ds_beam:
+    with xr.open_dataset(tmp.output_file, group="Beam") as ds_beam:
         backscatter_r = np.full_like(ds_beam.backscatter_r, 1)
         freq = ds_beam.backscatter_r.frequency
         ping_time = ds_beam.ping_time
         range_bin = ds_beam.range_bin
 
-    data = xr.DataArray(backscatter_r, coords=[('frequency', freq),
-                                               ('ping_time', ping_time),
-                                               ('range_bin', range_bin)])
-    data.name = 'backscatter_r'
+    data = xr.DataArray(
+        backscatter_r,
+        coords=[("frequency", freq), ("ping_time", ping_time), ("range_bin", range_bin)],
+    )
+    data.name = "backscatter_r"
     ds = data.to_dataset()
-    ds.to_netcdf(tmp.output_file, mode='a', group='Beam')
+    ds.to_netcdf(tmp.output_file, mode="a", group="Beam")
 
     # Run Sv calibration on array of 1
     ed = EchoData(tmp.output_file)
-    proc = Process('EK60', ed)
+    proc = Process("EK60", ed)
     proc.calibrate(ed)
     # Check if Sv is strictly increasing by differentiating along range
     assert np.all(np.diff(ed.Sv.Sv) >= 0)

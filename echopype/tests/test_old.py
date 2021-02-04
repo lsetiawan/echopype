@@ -1,48 +1,57 @@
 import os
 import shutil
+
 import numpy as np
-import xarray as xr
 import pandas as pd
+import xarray as xr
+
 from ..convert import Convert, ConvertEK80
-from ..process import ProcessEK60
 from ..process import Process
 
 # EK60 PATHS
 # ek60_raw_path = './echopype/test_data/ek60/2015843-D20151023-T190636.raw'   # Varying ranges
-ek60_raw_path = './echopype/test_data/ek60/DY1801_EK60-D20180211-T164025.raw'     # Constant ranges
-ek60_test_path = './echopype/test_data/ek60/from_matlab/DY1801_EK60-D20180211-T164025_Sv_TS.nc'
+ek60_raw_path = "./echopype/test_data/ek60/DY1801_EK60-D20180211-T164025.raw"  # Constant ranges
+ek60_test_path = "./echopype/test_data/ek60/from_matlab/DY1801_EK60-D20180211-T164025_Sv_TS.nc"
 # Volume backscattering strength aqcuired from EchoView
-ek60_csv_paths = ['./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv18.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv38.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv70.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv120.csv',
-                  './echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv200.csv']
-nc_path = os.path.join(os.path.dirname(ek60_raw_path),
-                       os.path.splitext(os.path.basename(ek60_raw_path))[0] + '.nc')
-Sv_path = os.path.join(os.path.dirname(ek60_raw_path),
-                       os.path.splitext(os.path.basename(ek60_raw_path))[0] + '_Sv.nc')
+ek60_csv_paths = [
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv18.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv38.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv70.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv120.csv",
+    "./echopype/test_data/ek60/from_echoview/DY1801_EK60-D20180211-T164025-Sv200.csv",
+]
+nc_path = os.path.join(
+    os.path.dirname(ek60_raw_path), os.path.splitext(os.path.basename(ek60_raw_path))[0] + ".nc"
+)
+Sv_path = os.path.join(
+    os.path.dirname(ek60_raw_path), os.path.splitext(os.path.basename(ek60_raw_path))[0] + "_Sv.nc"
+)
 
 # AZFP PATHS
-azfp_xml_path = './echopype/test_data/azfp/17041823.XML'
-azfp_01a_path = './echopype/test_data/azfp/17082117.01A'
-azfp_test_Sv_path = './echopype/test_data/azfp/from_matlab/17082117_Sv.nc'
-azfp_test_TS_path = './echopype/test_data/azfp/from_matlab/17082117_TS.nc'
-azfp_test_path = './echopype/test_data/azfp/from_matlab/17082117.nc'
-azfp_echoview_Sv_paths = ['./echopype/test_data/azfp/from_echoview/17082117-Sv38.csv',
-                          './echopype/test_data/azfp/from_echoview/17082117-Sv125.csv',
-                          './echopype/test_data/azfp/from_echoview/17082117-Sv200.csv',
-                          './echopype/test_data/azfp/from_echoview/17082117-Sv455.csv']
-azfp_echoview_TS_paths = ['./echopype/test_data/azfp/from_echoview/17082117-TS38.csv',
-                          './echopype/test_data/azfp/from_echoview/17082117-TS125.csv',
-                          './echopype/test_data/azfp/from_echoview/17082117-TS200.csv',
-                          './echopype/test_data/azfp/from_echoview/17082117-TS455.csv']
+azfp_xml_path = "./echopype/test_data/azfp/17041823.XML"
+azfp_01a_path = "./echopype/test_data/azfp/17082117.01A"
+azfp_test_Sv_path = "./echopype/test_data/azfp/from_matlab/17082117_Sv.nc"
+azfp_test_TS_path = "./echopype/test_data/azfp/from_matlab/17082117_TS.nc"
+azfp_test_path = "./echopype/test_data/azfp/from_matlab/17082117.nc"
+azfp_echoview_Sv_paths = [
+    "./echopype/test_data/azfp/from_echoview/17082117-Sv38.csv",
+    "./echopype/test_data/azfp/from_echoview/17082117-Sv125.csv",
+    "./echopype/test_data/azfp/from_echoview/17082117-Sv200.csv",
+    "./echopype/test_data/azfp/from_echoview/17082117-Sv455.csv",
+]
+azfp_echoview_TS_paths = [
+    "./echopype/test_data/azfp/from_echoview/17082117-TS38.csv",
+    "./echopype/test_data/azfp/from_echoview/17082117-TS125.csv",
+    "./echopype/test_data/azfp/from_echoview/17082117-TS200.csv",
+    "./echopype/test_data/azfp/from_echoview/17082117-TS455.csv",
+]
 
 
 # EK80 PATHS
-raw_path_bb = './echopype/test_data/ek80/D20170912-T234910.raw'       # Large file (BB)
-raw_path_cw = './echopype/test_data/ek80/D20190822-T161221.raw'       # Small file (CW) (Standard test)
-bb_power_test_path = './echopype/test_data/ek80/from_echoview/70 kHz raw power.complex.csv'
-ek80_raw_path = './echopype/test_data/ek80/Summer2018--D20180905-T033113.raw'   # BB and CW
+raw_path_bb = "./echopype/test_data/ek80/D20170912-T234910.raw"  # Large file (BB)
+raw_path_cw = "./echopype/test_data/ek80/D20190822-T161221.raw"  # Small file (CW) (Standard test)
+bb_power_test_path = "./echopype/test_data/ek80/from_echoview/70 kHz raw power.complex.csv"
+ek80_raw_path = "./echopype/test_data/ek80/Summer2018--D20180905-T033113.raw"  # BB and CW
 
 
 def test_bb():
@@ -52,12 +61,12 @@ def test_bb():
 
     # Compare with EchoView exported data
     bb_test_df = pd.read_csv(bb_power_test_path, header=None, skiprows=[0])
-    bb_test_df_r = bb_test_df.iloc[::2,14:]
-    bb_test_df_i = bb_test_df.iloc[1::2,14:]
-    with xr.open_dataset(tmp.nc_path, group='Beam') as ds_beam:
+    bb_test_df_r = bb_test_df.iloc[::2, 14:]
+    bb_test_df_i = bb_test_df.iloc[1::2, 14:]
+    with xr.open_dataset(tmp.nc_path, group="Beam") as ds_beam:
         # Select 70 kHz channel and averaged across the quadrants
-        backscatter_r = ds_beam.backscatter_r[0].dropna('range_bin').mean('quadrant')
-        backscatter_i = ds_beam.backscatter_i[0].dropna('range_bin').mean('quadrant')
+        backscatter_r = ds_beam.backscatter_r[0].dropna("range_bin").mean("quadrant")
+        backscatter_i = ds_beam.backscatter_i[0].dropna("range_bin").mean("quadrant")
         assert np.allclose(backscatter_r, bb_test_df_r)
         assert np.allclose(backscatter_i, bb_test_df_i)
 
@@ -82,7 +91,7 @@ def test_calibrate_ek80_cw():
     e_data = Process(tmp.nc_path)
     e_data.calibrate(save=True)
     e_data._temp_ed.close()
-    os.remove('./echopype/test_data/ek80/D20190822-T161221_Sv.nc')
+    os.remove("./echopype/test_data/ek80/D20190822-T161221_Sv.nc")
 
 
 def test_calibration_ek60_echoview():
