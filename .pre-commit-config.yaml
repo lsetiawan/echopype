@@ -30,8 +30,3 @@ repos:
     rev: v5.2.0
     hooks:
     - id: isort
-
--   repo: https://github.com/myint/rstcheck
-    rev: master
-    hooks:
-    -   id: rstcheck
