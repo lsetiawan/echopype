@@ -3,3 +3,6 @@ include *.txt
 recursive-include docs *.txt
 include versioneer.py
 include echopype/_version.py
+recursive-exclude notebooks *
+recursive-exclude echopype test_data *
+recursive-exclude docs *
