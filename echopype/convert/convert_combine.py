@@ -8,7 +8,7 @@ from datetime import datetime as dt
 from fsspec.mapping import FSMap
 from fsspec.implementations.local import LocalFileSystem
 import xarray as xr
-from _echopype_version import version as ECHOPYPE_VERSION
+from echopype.version import version as ECHOPYPE_VERSION
 from ..utils import io
 from .set_groups_base import DEFAULT_CHUNK_SIZE
 

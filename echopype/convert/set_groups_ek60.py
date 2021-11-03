@@ -4,7 +4,8 @@ from datetime import datetime as dt
 
 import numpy as np
 import xarray as xr
-from _echopype_version import version as ECHOPYPE_VERSION
+
+from echopype.version import version as ECHOPYPE_VERSION
 
 from .set_groups_base import DEFAULT_CHUNK_SIZE, SetGroupsBase, set_encodings
 

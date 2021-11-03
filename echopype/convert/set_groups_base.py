@@ -5,8 +5,9 @@ import numpy as np
 import pynmea2
 import xarray as xr
 import zarr
-from _echopype_version import version as ECHOPYPE_VERSION
 from xarray import coding
+
+from echopype.version import version as ECHOPYPE_VERSION
 
 COMPRESSION_SETTINGS = {
     "netcdf4": {"zlib": True, "complevel": 4},
