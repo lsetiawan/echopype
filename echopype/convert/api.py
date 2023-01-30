@@ -117,6 +117,17 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         **kwargs,
     )
 
+    # Sonar group
+    io.save_file(
+        echodata["Sonar"],
+        path=output_path,
+        group="Sonar",
+        mode="a",
+        engine=engine,
+        compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
+        **kwargs,
+    )
+
     delayed_funcs = []
 
     # Environment group
@@ -158,17 +169,6 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         echodata["Provenance"],
         path=output_path,
         group="Provenance",
-        mode="a",
-        engine=engine,
-        compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
-        **kwargs,
-    ))
-
-    # Sonar group
-    delayed_funcs.append(dask.delayed(io.save_file)(
-        echodata["Sonar"],
-        path=output_path,
-        group="Sonar",
         mode="a",
         engine=engine,
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
