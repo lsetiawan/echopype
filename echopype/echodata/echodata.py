@@ -3,7 +3,7 @@ import shutil
 import warnings
 from html import escape
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Tuple, Union, Literal, Mapping
 
 import fsspec
 import numpy as np
@@ -789,6 +789,26 @@ class EchoData:
             engine=XARRAY_ENGINE_MAP[suffix],
             **self.open_kwargs,
         )
+
+    def chunk(
+        self,
+        chunks: "int | Literal['auto'] | Mapping[Any, None | int | str | tuple[int, ...]]" = "auto"
+    ) -> EchoData:
+        """
+        Coerce all arrays in specified echodata group(s) into dask arrays with the given chunks.
+        """
+
+        if chunks == "":
+            # Set chunks based on full dimension size
+            # TODO: make it more adaptive based on complete size
+            for p in self.group_paths:
+                ds = self[p]
+                self[p] = ds.chunk(ds.dims)
+        else:
+            raise NotImplementedError("Only 'auto' currently works.")
+
+        return self
+
 
     def to_netcdf(
         self,

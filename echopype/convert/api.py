@@ -86,15 +86,32 @@ def to_file(
             logger.info(f"overwriting {output_file}")
         else:
             logger.info(f"saving {output_file}")
-        _save_groups_to_file(
-            echodata,
-            output_path=io.sanitize_file_path(
-                file_path=output_file, storage_options=output_storage_options
-            ),
-            engine=engine,
-            compress=compress,
-            **kwargs,
-        )
+        if isinstance(echodata._tree, DataTree):
+            # If it's a datatree, then just use datatree functionality to export to file
+            tree = echodata._tree
+            if engine == 'zarr':
+                _to_func = tree.to_zarr
+            elif engine == 'netcdf4':
+                _to_func = tree.to_netcdf
+            else:
+                raise ValueError(f"Unknown engine: {engine}")
+            
+            _to_func(
+                store=io.sanitize_file_path(
+                    file_path=output_file, storage_options=output_storage_options
+                ),
+                **kwargs
+            )
+        else:
+            _save_groups_to_file(
+                echodata,
+                output_path=io.sanitize_file_path(
+                    file_path=output_file, storage_options=output_storage_options
+                ),
+                engine=engine,
+                compress=compress,
+                **kwargs,
+            )
 
     # Link path to saved file with attribute as if from open_converted
     echodata.converted_raw_path = output_file
