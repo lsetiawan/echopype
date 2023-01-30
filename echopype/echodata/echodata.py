@@ -798,7 +798,7 @@ class EchoData:
         Coerce all arrays in specified echodata group(s) into dask arrays with the given chunks.
         """
 
-        if chunks == "":
+        if chunks == "auto":
             # Set chunks based on full dimension size
             # TODO: make it more adaptive based on complete size
             for p in self.group_paths:

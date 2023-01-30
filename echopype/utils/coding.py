@@ -1,4 +1,5 @@
 from re import search
+import itertools as it
 
 import numpy as np
 import xarray as xr
@@ -101,6 +102,10 @@ def set_zarr_encodings(ds: xr.Dataset, compression_settings: dict) -> dict:
     for name, val in ds.variables.items():
 
         val_encoding = val.encoding
+        if val.chunks is not None:
+            val_encoding.update({
+                'chunks': list(it.chain.from_iterable(val.chunks))
+            })
         val_encoding.update(get_zarr_compression(val, compression_settings))
         encoding[name] = val_encoding
 
