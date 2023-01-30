@@ -1,6 +1,7 @@
 import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
+import dask
 
 import fsspec
 from datatree import DataTree
@@ -86,32 +87,16 @@ def to_file(
             logger.info(f"overwriting {output_file}")
         else:
             logger.info(f"saving {output_file}")
-        if isinstance(echodata._tree, DataTree):
-            # If it's a datatree, then just use datatree functionality to export to file
-            tree = echodata._tree
-            if engine == 'zarr':
-                _to_func = tree.to_zarr
-            elif engine == 'netcdf4':
-                _to_func = tree.to_netcdf
-            else:
-                raise ValueError(f"Unknown engine: {engine}")
-            
-            _to_func(
-                store=io.sanitize_file_path(
-                    file_path=output_file, storage_options=output_storage_options
-                ),
-                **kwargs
-            )
-        else:
-            _save_groups_to_file(
-                echodata,
-                output_path=io.sanitize_file_path(
-                    file_path=output_file, storage_options=output_storage_options
-                ),
-                engine=engine,
-                compress=compress,
-                **kwargs,
-            )
+
+        _save_groups_to_file(
+            echodata,
+            output_path=io.sanitize_file_path(
+                file_path=output_file, storage_options=output_storage_options
+            ),
+            engine=engine,
+            compress=compress,
+            **kwargs,
+        )
 
     # Link path to saved file with attribute as if from open_converted
     echodata.converted_raw_path = output_file
@@ -132,8 +117,10 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         **kwargs,
     )
 
+    delayed_funcs = []
+
     # Environment group
-    io.save_file(
+    delayed_funcs.append(dask.delayed(io.save_file)(
         echodata["Environment"],  # TODO: chunking necessary?
         path=output_path,
         mode="a",
@@ -141,10 +128,10 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         group="Environment",
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
         **kwargs,
-    )
+    ))
 
     # Platform group
-    io.save_file(
+    delayed_funcs.append(dask.delayed(io.save_file)(
         echodata["Platform"],  # TODO: chunking necessary? time1 and time2 (EK80) only
         path=output_path,
         mode="a",
@@ -152,11 +139,11 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         group="Platform",
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
         **kwargs,
-    )
+    ))
 
     # Platform/NMEA group: some sonar model does not produce NMEA data
     if echodata["Platform/NMEA"] is not None:
-        io.save_file(
+        delayed_funcs.append(dask.delayed(io.save_file)(
             echodata["Platform/NMEA"],  # TODO: chunking necessary?
             path=output_path,
             mode="a",
@@ -164,10 +151,10 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
             group="Platform/NMEA",
             compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
             **kwargs,
-        )
+        ))
 
     # Provenance group
-    io.save_file(
+    delayed_funcs.append(dask.delayed(io.save_file)(
         echodata["Provenance"],
         path=output_path,
         group="Provenance",
@@ -175,10 +162,10 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         engine=engine,
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
         **kwargs,
-    )
+    ))
 
     # Sonar group
-    io.save_file(
+    delayed_funcs.append(dask.delayed(io.save_file)(
         echodata["Sonar"],
         path=output_path,
         group="Sonar",
@@ -186,12 +173,12 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         engine=engine,
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
         **kwargs,
-    )
+    ))
 
     # /Sonar/Beam_groupX group
     if echodata.sonar_model == "AD2CP":
         for i in range(1, len(echodata["Sonar"]["beam_group"]) + 1):
-            io.save_file(
+            delayed_funcs.append(dask.delayed(io.save_file)(
                 echodata[f"Sonar/Beam_group{i}"],
                 path=output_path,
                 mode="a",
@@ -199,9 +186,9 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
                 group=f"Sonar/Beam_group{i}",
                 compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
                 **kwargs,
-            )
+            ))
     else:
-        io.save_file(
+        delayed_funcs.append(dask.delayed(io.save_file)(
             echodata[f"Sonar/{BEAM_SUBGROUP_DEFAULT}"],
             path=output_path,
             mode="a",
@@ -209,10 +196,10 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
             group=f"Sonar/{BEAM_SUBGROUP_DEFAULT}",
             compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
             **kwargs,
-        )
+        ))
         if echodata["Sonar/Beam_group2"] is not None:
             # some sonar model does not produce Sonar/Beam_group2
-            io.save_file(
+            delayed_funcs.append(dask.delayed(io.save_file)(
                 echodata["Sonar/Beam_group2"],
                 path=output_path,
                 mode="a",
@@ -220,10 +207,10 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
                 group="Sonar/Beam_group2",
                 compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
                 **kwargs,
-            )
+            ))
 
     # Vendor_specific group
-    io.save_file(
+    delayed_funcs.append(dask.delayed(io.save_file)(
         echodata["Vendor_specific"],  # TODO: chunking necessary?
         path=output_path,
         mode="a",
@@ -231,7 +218,9 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         group="Vendor_specific",
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
         **kwargs,
-    )
+    ))
+
+    dask.compute(*delayed_funcs)
 
 
 def _set_convert_params(param_dict: Dict[str, str]) -> Dict[str, str]:
