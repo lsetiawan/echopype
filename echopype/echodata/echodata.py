@@ -793,7 +793,7 @@ class EchoData:
     def chunk(
         self,
         chunks: "int | Literal['auto'] | Mapping[Any, None | int | str | tuple[int, ...]]" = "auto"
-    ) -> EchoData:
+    ):
         """
         Coerce all arrays in specified echodata group(s) into dask arrays with the given chunks.
         """
