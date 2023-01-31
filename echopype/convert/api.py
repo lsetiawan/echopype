@@ -102,6 +102,31 @@ def to_file(
     echodata.converted_raw_path = output_file
 
 
+def _save_platform_group(echodata, output_path, engine, compress=True, **kwargs):
+    # Platform group
+    io.save_file(
+        echodata["Platform"],  # TODO: chunking necessary? time1 and time2 (EK80) only
+        path=output_path,
+        mode="a",
+        engine=engine,
+        group="Platform",
+        compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
+        **kwargs,
+    )
+
+    # Platform/NMEA group: some sonar model does not produce NMEA data
+    if echodata["Platform/NMEA"] is not None:
+        io.save_file(
+            echodata["Platform/NMEA"],  # TODO: chunking necessary?
+            path=output_path,
+            mode="a",
+            engine=engine,
+            group="Platform/NMEA",
+            compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
+            **kwargs,
+        )
+
+
 def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs):
     """Serialize all groups to file."""
     # TODO: in terms of chunking, would using rechunker at the end be faster and more convenient?
@@ -112,6 +137,17 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
         echodata["Top-level"],
         path=output_path,
         mode="w",
+        engine=engine,
+        compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
+        **kwargs,
+    )
+
+    # Sonar group
+    io.save_file(
+        echodata["Sonar"],
+        path=output_path,
+        group="Sonar",
+        mode="a",
         engine=engine,
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
         **kwargs,
@@ -131,44 +167,17 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
     ))
 
     # Platform group
-    delayed_funcs.append(dask.delayed(io.save_file)(
-        echodata["Platform"],  # TODO: chunking necessary? time1 and time2 (EK80) only
-        path=output_path,
-        mode="a",
-        engine=engine,
-        group="Platform",
-        compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
-        **kwargs,
-    ))
-
-    # Platform/NMEA group: some sonar model does not produce NMEA data
-    if echodata["Platform/NMEA"] is not None:
-        delayed_funcs.append(dask.delayed(io.save_file)(
-            echodata["Platform/NMEA"],  # TODO: chunking necessary?
-            path=output_path,
-            mode="a",
-            engine=engine,
-            group="Platform/NMEA",
-            compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
-            **kwargs,
-        ))
+    delayed_funcs.append(
+        dask.delayed(_save_platform_group)(
+            echodata, output_path, engine, compress, **kwargs
+        )
+    )
 
     # Provenance group
     delayed_funcs.append(dask.delayed(io.save_file)(
         echodata["Provenance"],
         path=output_path,
         group="Provenance",
-        mode="a",
-        engine=engine,
-        compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
-        **kwargs,
-    ))
-
-    # Sonar group
-    delayed_funcs.append(dask.delayed(io.save_file)(
-        echodata["Sonar"],
-        path=output_path,
-        group="Sonar",
         mode="a",
         engine=engine,
         compression_settings=COMPRESSION_SETTINGS[engine] if compress else None,
@@ -188,8 +197,9 @@ def _save_groups_to_file(echodata, output_path, engine, compress=True, **kwargs)
                 **kwargs,
             ))
     else:
+        ds = echodata[f"Sonar/{BEAM_SUBGROUP_DEFAULT}"]
         delayed_funcs.append(dask.delayed(io.save_file)(
-            echodata[f"Sonar/{BEAM_SUBGROUP_DEFAULT}"],
+            ds,
             path=output_path,
             mode="a",
             engine=engine,

@@ -7,6 +7,7 @@ import platform
 import sys
 from pathlib import Path, WindowsPath
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+import itertools as it
 
 import fsspec
 import xarray as xr
@@ -44,6 +45,12 @@ def save_file(ds, path, mode, engine, group=None, compression_settings=None, **k
 
     # set zarr or netcdf specific encodings for each variable in ds
     encoding = set_storage_encodings(ds, compression_settings, engine)
+
+    # Chunk by dims
+    # TODO: Enable optional chunking inputs
+    ds = ds.chunk(ds.dims)
+    for name, val in ds.data_vars.items():
+        encoding[name] = {"chunks": list(it.chain.from_iterable(val.chunks))} if val.chunks else {}
 
     # Allows saving both NetCDF and Zarr files from an xarray dataset
     if engine == "netcdf4":
